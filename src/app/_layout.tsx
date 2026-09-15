@@ -1,15 +1,26 @@
-import { Redirect, Stack } from "expo-router";
-import { useState } from "react";
+import { Stack } from "expo-router";
+import { SessionProvider, useSession } from "@/context/session";
 import "../../global.css";
 
 export default function RootLayout() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // temporary: will come from supabase
+  return (
+    <SessionProvider>
+      <RootNavigator />
+    </SessionProvider>
+  );
+}
+
+function RootNavigator() {
+  const { session } = useSession();
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="(auth)" />
-      {!isLoggedIn && <Redirect href="/login" />}
+      <Stack.Protected guard={!!session}>
+        <Stack.Screen name="(tabs)" />
+      </Stack.Protected>
+      <Stack.Protected guard={!session}>
+        <Stack.Screen name="(auth)" />
+      </Stack.Protected>
     </Stack>
   );
 }
