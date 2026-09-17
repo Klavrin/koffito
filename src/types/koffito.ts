@@ -55,6 +55,8 @@ export type CoffeeEvent = {
   participants: User[];
   maxParticipants: number;
   status: MeetupStatusType;
+  /** Whether the signed-in user is part of this coffee talk. */
+  joined: boolean;
   /** Blind coffee talks keep the café secret until shortly before the meetup. */
   locationHidden?: boolean;
 };

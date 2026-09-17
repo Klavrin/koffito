@@ -17,6 +17,7 @@ export const events: CoffeeEvent[] = [
     participants: [users[0], users[1], users[2]],
     maxParticipants: 4,
     status: "confirmed",
+    joined: true,
   },
   {
     id: "e2",
@@ -25,6 +26,7 @@ export const events: CoffeeEvent[] = [
     participants: [users[3], users[4]],
     maxParticipants: 3,
     status: "confirmed",
+    joined: true,
     locationHidden: true,
   },
   {
@@ -34,6 +36,7 @@ export const events: CoffeeEvent[] = [
     participants: [users[5]],
     maxParticipants: 5,
     status: "pending",
+    joined: true,
   },
   {
     id: "e4",
@@ -42,10 +45,36 @@ export const events: CoffeeEvent[] = [
     participants: [users[0], users[4], users[5], users[1]],
     maxParticipants: 4,
     status: "completed",
+    joined: true,
+  },
+  {
+    id: "e5",
+    cafe: cafes[2],
+    date: fromNow(1 * DAY + 3 * HOUR),
+    participants: [users[2], users[3]],
+    maxParticipants: 4,
+    status: "confirmed",
+    joined: false,
+  },
+  {
+    id: "e6",
+    cafe: cafes[3],
+    date: fromNow(3 * DAY),
+    participants: [users[1]],
+    maxParticipants: 3,
+    status: "confirmed",
+    joined: false,
+  },
+  {
+    id: "e7",
+    cafe: cafes[0],
+    date: fromNow(4 * DAY + 2 * HOUR),
+    participants: [users[4], users[5], users[0]],
+    maxParticipants: 5,
+    status: "confirmed",
+    joined: false,
   },
 ];
-
-export const getEvent = (id?: string) => events.find((event) => event.id === id);
 
 export const isUpcoming = (event: CoffeeEvent) =>
   event.date.getTime() > Date.now() && event.status !== "cancelled" && event.status !== "completed";

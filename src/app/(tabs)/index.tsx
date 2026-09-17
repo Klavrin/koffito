@@ -32,7 +32,7 @@ export default function HomePage() {
     return <Redirect href="/survey" />;
   }
 
-  const upcoming = events.filter(isUpcoming).sort((a, b) => a.date.getTime() - b.date.getTime());
+  const upcoming = events.filter((event) => event.joined && isUpcoming(event)).sort((a, b) => a.date.getTime() - b.date.getTime());
   const nextEvent = upcoming[0];
   const today = new Date();
 

@@ -9,6 +9,7 @@ type EventsContextValue = {
   events: CoffeeEvent[];
   getEvent: (id?: string) => CoffeeEvent | undefined;
   createEvent: (event: NewEvent) => CoffeeEvent;
+  joinEvent: (id: string) => void;
   cancelEvent: (id: string) => void;
 };
 
@@ -24,10 +25,12 @@ export function EventsProvider({ children }: PropsWithChildren) {
         events,
         getEvent: (id) => events.find((event) => event.id === id),
         createEvent: (details) => {
-          const event: CoffeeEvent = { id: `e${Date.now()}`, participants: [], status: "confirmed", ...details };
+          const event: CoffeeEvent = { id: `e${Date.now()}`, participants: [], status: "confirmed", joined: true, ...details };
           setEvents((current) => [event, ...current]);
           return event;
         },
+        joinEvent: (id) =>
+          setEvents((current) => current.map((event) => (event.id === id ? { ...event, joined: true } : event))),
         cancelEvent: (id) =>
           setEvents((current) => current.map((event) => (event.id === id ? { ...event, status: "cancelled" } : event))),
       }}>
