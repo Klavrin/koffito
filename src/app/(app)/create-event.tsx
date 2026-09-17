@@ -1,20 +1,18 @@
-import { router } from "expo-router";
 import { useState } from "react";
-import { Switch, View } from "react-native";
+import { View } from "react-native";
 
 import { CafePicker } from "@/components/events/cafe-picker";
 import { combineDateTime, DayPicker, TimePicker } from "@/components/events/date-time-picker";
 import { FormField } from "@/components/events/form-field";
 import { Stepper } from "@/components/events/stepper";
 import { Screen } from "@/components/layout";
-import { Button, Card, Header, Input, Text, useToast } from "@/components/ui";
+import { Button, Card, Header, Input, Text, Toggle, useToast } from "@/components/ui";
 import { useEvents } from "@/context/events";
-import { useKoffitoTheme } from "@/theme/theme-provider";
+import { goBack } from "@/lib/navigation";
 import type { Cafe } from "@/types/koffito";
 
 export default function CreateEventPage() {
   const { createEvent } = useEvents();
-  const { colors } = useKoffitoTheme();
   const toast = useToast();
 
   const [cafe, setCafe] = useState<Cafe>();
@@ -51,12 +49,12 @@ export default function CreateEventPage() {
       locationHidden,
     });
     toast.show({ title: "Coffee talk created!", message: `See you at ${cafe.name} ☕`, variant: "success" });
-    router.back();
+    goBack();
   };
 
   return (
     <Screen
-      header={<Header title="New event" subtitle="Set up a coffee talk" onBack={router.back} />}
+      header={<Header title="New event" subtitle="Set up a coffee talk" onBack={goBack} />}
       footer={<Button title="Save" size="lg" fullWidth leftIcon="checkmark" onPress={handleSave} />}>
       <CafePicker value={cafe} onChange={handleCafeChange} error={showError("cafe")} />
 
@@ -98,13 +96,7 @@ export default function CreateEventPage() {
             Guests only see the location shortly before the meetup.
           </Text>
         </View>
-        <Switch
-          accessibilityLabel="Keep the café a surprise"
-          value={locationHidden}
-          onValueChange={setLocationHidden}
-          trackColor={{ true: colors.primary, false: colors.border }}
-          thumbColor={colors.surface}
-        />
+        <Toggle accessibilityLabel="Keep the café a surprise" value={locationHidden} onValueChange={setLocationHidden} />
       </Card>
     </Screen>
   );

@@ -1,8 +1,7 @@
 import { Children, type PropsWithChildren } from "react";
-import { Pressable, Switch, View } from "react-native";
+import { Pressable, View } from "react-native";
 
-import { Card, Icon, type IconName, Text } from "@/components/ui";
-import { useKoffitoTheme } from "@/theme/theme-provider";
+import { Card, Icon, type IconName, Text, Toggle } from "@/components/ui";
 
 export type SettingsSectionProps = PropsWithChildren<{ title: string }>;
 
@@ -39,7 +38,6 @@ export type SettingsRowProps = {
 };
 
 export function SettingsRow({ icon, label, description, onPress, toggle, tone = "default" }: SettingsRowProps) {
-  const { colors } = useKoffitoTheme();
   const destructive = tone === "error";
 
   const content = (
@@ -58,13 +56,7 @@ export function SettingsRow({ icon, label, description, onPress, toggle, tone = 
         )}
       </View>
       {toggle ? (
-        <Switch
-          accessibilityLabel={label}
-          value={toggle.value}
-          onValueChange={toggle.onChange}
-          trackColor={{ true: colors.primary, false: colors.border }}
-          thumbColor={colors.surface}
-        />
+        <Toggle accessibilityLabel={label} value={toggle.value} onValueChange={toggle.onChange} />
       ) : (
         onPress && !destructive && <Icon name="chevron-forward" size={18} color="muted" />
       )}
