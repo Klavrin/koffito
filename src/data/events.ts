@@ -78,3 +78,12 @@ export const events: CoffeeEvent[] = [
 
 export const isUpcoming = (event: CoffeeEvent) =>
   event.date.getTime() > Date.now() && event.status !== "cancelled" && event.status !== "completed";
+
+/** How long before the meetup a surprise café is revealed. */
+const REVEAL_BEFORE_MS = HOUR;
+
+export const getRevealTime = (event: CoffeeEvent) => new Date(event.date.getTime() - REVEAL_BEFORE_MS);
+
+/** Surprise cafés stay hidden until shortly before an upcoming meetup. */
+export const isLocationHidden = (event: CoffeeEvent) =>
+  !!event.locationHidden && isUpcoming(event) && getRevealTime(event).getTime() > Date.now();

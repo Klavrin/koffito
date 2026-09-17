@@ -29,7 +29,7 @@ export function AppTabBar({ state, navigation }: TabBarRenderProps) {
   };
 
   return (
-    <View pointerEvents="box-none" className="absolute inset-x-0 bottom-0 items-center">
+    <View style={{ pointerEvents: "box-none" }} className="absolute inset-x-0 bottom-0 items-center">
       <TabBar items={tabs} activeKey={activeKey} onChange={handleChange} className="w-full max-w-xl" />
     </View>
   );

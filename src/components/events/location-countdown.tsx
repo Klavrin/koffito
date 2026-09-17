@@ -9,17 +9,16 @@ export type LocationCountdownProps = {
   revealAt: Date;
 };
 
-/** How long before the meetup a surprise café is revealed. */
-export const REVEAL_BEFORE_MS = 60 * 60 * 1000;
-
 /** Pill shown over the blurred café picture: "Revealing location in 22:04:27". */
 export function LocationCountdown({ revealAt }: LocationCountdownProps) {
-  const [remaining, setRemaining] = useState(() => revealAt.getTime() - Date.now());
+  // Depend on the timestamp, not the Date object, so a fresh Date each render doesn't restart the timer.
+  const target = revealAt.getTime();
+  const [remaining, setRemaining] = useState(() => target - Date.now());
 
   useEffect(() => {
-    const timer = setInterval(() => setRemaining(revealAt.getTime() - Date.now()), 1000);
+    const timer = setInterval(() => setRemaining(target - Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [revealAt]);
+  }, [target]);
 
   return (
     <View

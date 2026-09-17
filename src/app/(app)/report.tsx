@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 
 import { Screen, Section } from "@/components/layout";
@@ -6,6 +6,7 @@ import { OptionList } from "@/components/survey/option-list";
 import { Button, Card, Header, Input, Text, useToast } from "@/components/ui";
 import { useEvents } from "@/context/events";
 import { reportReasons } from "@/data/reports";
+import { goBack } from "@/lib/navigation";
 
 const MIN_DETAILS = 10;
 
@@ -30,18 +31,18 @@ export default function ReportPage() {
     // Stand-in for the real request.
     setTimeout(() => {
       toast.show({ title: "Report sent", message: "Thank you — our team will take a look.", variant: "success" });
-      router.back();
+      goBack();
     }, 600);
   };
 
   return (
     <Screen
-      header={<Header title="Report" subtitle={event ? `Coffee talk at ${event.cafe.name}` : undefined} onBack={router.back} />}
+      header={<Header title="Report" subtitle={event ? `Coffee talk at ${event.cafe.name}` : undefined} onBack={goBack} />}
       footer={<Button title="Send report" size="lg" fullWidth loading={sending} disabled={reason.length === 0} onPress={handleSubmit} />}>
       <Card variant="filled" className="gap-1">
-        <Text variant="label">We're sorry something went wrong 💛</Text>
+        <Text variant="label">We&apos;re sorry something went wrong 💛</Text>
         <Text variant="caption" tone="muted">
-          Reports are private. The people involved won't know who sent it.
+          Reports are private. The people involved won&apos;t know who sent it.
         </Text>
       </Card>
 

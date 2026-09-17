@@ -7,6 +7,7 @@ import { AvatarPicker } from "@/components/profile/avatar-picker";
 import { ProfileFields, validateAge } from "@/components/profile/profile-fields";
 import { Button, Header, Input, Modal, useToast } from "@/components/ui";
 import { useSession } from "@/context/session";
+import { goBack } from "@/lib/navigation";
 import { validateRequired } from "@/lib/validation";
 
 export default function MyProfilePage() {
@@ -27,11 +28,11 @@ export default function MyProfilePage() {
   const handleSave = () => {
     updateProfile({ ...draft, firstName: draft.firstName.trim() });
     toast.show({ title: "Profile saved", variant: "success" });
-    router.back();
+    goBack();
   };
 
   // Don't silently drop edits when leaving.
-  const handleBack = () => (dirty ? setDiscardOpen(true) : router.back());
+  const handleBack = () => (dirty ? setDiscardOpen(true) : goBack());
 
   return (
     <Screen
@@ -65,7 +66,7 @@ export default function MyProfilePage() {
         emoji="✏️"
         title="Discard your changes?"
         description="Your edits haven't been saved yet."
-        primaryAction={{ title: "Discard", variant: "destructive", onPress: router.back }}
+        primaryAction={{ title: "Discard", variant: "destructive", onPress: goBack }}
         secondaryAction={{ title: "Keep editing", onPress: () => setDiscardOpen(false) }}
       />
     </Screen>

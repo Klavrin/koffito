@@ -8,6 +8,7 @@ import { MapPlaceholder } from "@/components/events/map-placeholder";
 import { EmptyState, Header, useToast } from "@/components/ui";
 import { useEvents } from "@/context/events";
 import { isUpcoming } from "@/data/events";
+import { goBack } from "@/lib/navigation";
 
 const CARD_GAP = 12;
 const SIDE_PADDING = 20;
@@ -38,13 +39,13 @@ export default function FindCoffeeTalkPage() {
 
   const handleJoin = (id: string, cafeName: string) => {
     joinEvent(id);
-    toast.show({ title: "You're in! ☕", message: `We saved you a seat at ${cafeName}.`, variant: "success" });
+    toast.show({ title: "You're in! ☕", message: `We saved you a seat at ${cafeName}`, variant: "success" });
     router.replace({ pathname: "/event-details", params: { id } });
   };
 
   return (
     <View className="flex-1 bg-background">
-      <Header title="Find coffee talk" subtitle={`${open.length} coffee talk(s) near you`} onBack={router.back} />
+      <Header title="Find coffee talk" subtitle={`${open.length} coffee talk(s) near you`} onBack={goBack} />
 
       {open.length === 0 ? (
         <EmptyState

@@ -3,6 +3,8 @@ import { View } from "react-native";
 
 import { MeetupStatus } from "@/components/koffito";
 import { AvatarGroup, Card, Text } from "@/components/ui";
+import { isLocationHidden } from "@/data/events";
+import { toAvatarPeople } from "@/data/users";
 import { formatDateTime } from "@/lib/date";
 import type { CoffeeEvent } from "@/types/koffito";
 
@@ -16,7 +18,7 @@ export type EventCardProps = {
 
 /** List card for a coffee talk: café picture, when/where and who's coming. */
 export function EventCard({ event, onPress, animateIn }: EventCardProps) {
-  const hidden = !!event.locationHidden;
+  const hidden = isLocationHidden(event);
 
   return (
     <Card onPress={onPress} animateIn={animateIn} padding="sm" className="gap-3">
@@ -40,7 +42,7 @@ export function EventCard({ event, onPress, animateIn }: EventCardProps) {
 
       <View className="flex-row items-center justify-between px-1 pb-1">
         <View className="flex-row items-center gap-2">
-          <AvatarGroup people={event.participants} size="xs" />
+          <AvatarGroup people={toAvatarPeople(event.participants)} size="xs" />
           <Text variant="caption" tone="muted">
             {event.participants.length}/{event.maxParticipants} going
           </Text>

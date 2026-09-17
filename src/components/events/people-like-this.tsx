@@ -1,6 +1,7 @@
 import { View } from "react-native";
 
 import { AvatarGroup, Text } from "@/components/ui";
+import { toAvatarPeople } from "@/data/users";
 import type { User } from "@/types/koffito";
 
 export type PeopleLikeThisProps = {
@@ -24,7 +25,7 @@ export function PeopleLikeThis({ people, caption }: PeopleLikeThisProps) {
 
   return (
     <View className="flex-row items-center gap-3 rounded-full bg-surface-muted py-2 pl-2 pr-4">
-      <AvatarGroup people={people} size="sm" />
+      <AvatarGroup people={toAvatarPeople(people)} size="sm" />
       <View className="flex-1">
         <Text variant="label" numberOfLines={1}>
           People like this place

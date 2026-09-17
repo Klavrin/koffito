@@ -28,7 +28,10 @@ export function AvatarPicker({ value, onChange, label = "Choose avatar" }: Avata
       <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => setOpen(true)}>
         <EmojiAvatar emoji={value} size="xl" />
       </Pressable>
-      <Button title={label} variant="secondary" size="sm" leftIcon="happy-outline" onPress={() => setOpen(true)} className="self-center" />
+      {/* Button aligns itself to the start, so center it with a row. */}
+      <View className="flex-row justify-center">
+        <Button title={label} variant="secondary" size="sm" leftIcon="happy-outline" onPress={() => setOpen(true)} />
+      </View>
 
       <BottomSheet
         visible={open}

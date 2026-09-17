@@ -1,4 +1,3 @@
-import { router } from "expo-router";
 import { useState } from "react";
 import { ScrollView, View } from "react-native";
 
@@ -7,6 +6,7 @@ import { Screen } from "@/components/layout";
 import { Badge, BottomSheet, Button, Chip, EmptyState, Header, Text, useToast } from "@/components/ui";
 import { reports as initialReports } from "@/data/reports";
 import { formatDate } from "@/lib/date";
+import { goBack } from "@/lib/navigation";
 import type { Report, ReportStatus } from "@/types/koffito";
 
 type Filter = "all" | ReportStatus;
@@ -37,7 +37,7 @@ export default function AdminPage() {
 
   return (
     <Screen
-      header={<Header title="Reports" subtitle={openCount ? `${openCount} waiting for review` : "All caught up"} onBack={router.back} />}
+      header={<Header title="Reports" subtitle={openCount ? `${openCount} waiting for review` : "All caught up"} onBack={goBack} />}
       contentClassName="gap-4">
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-5 flex-grow-0" contentContainerClassName="gap-2 px-5">
         {filters.map((item) => (

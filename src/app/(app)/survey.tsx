@@ -11,6 +11,7 @@ import { SurveyStep } from "@/components/survey/survey-step";
 import { Button, Header, Text, useToast } from "@/components/ui";
 import { useSession } from "@/context/session";
 import { interestQuestions, motivationQuestion, type SurveyQuestion } from "@/data/survey";
+import { goBack } from "@/lib/navigation";
 import type { SurveyAnswers } from "@/types/koffito";
 
 type Step = { kind: "question"; question: SurveyQuestion } | { kind: "about" };
@@ -50,7 +51,7 @@ export default function SurveyPage() {
 
   const handleBack = () => {
     if (stepIndex > 0) return setStepIndex(stepIndex - 1);
-    if (router.canGoBack()) router.back();
+    goBack();
   };
 
   const handleNext = () => {
@@ -60,7 +61,7 @@ export default function SurveyPage() {
 
     if (retake) {
       toast.show({ title: "Interests updated", message: "We'll use them for your next matches.", variant: "success" });
-      router.back();
+      goBack();
     } else {
       toast.show({ title: `You're all set, ${profile.firstName}!`, message: "Time to find a coffee talk.", variant: "success" });
       router.replace("/");

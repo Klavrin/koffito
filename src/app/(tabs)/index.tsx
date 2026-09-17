@@ -96,7 +96,7 @@ export default function HomePage() {
           />
           {editingAvailability && (
             <Text variant="caption" tone="muted" className="text-center">
-              Tap the days you're free ☕
+              Tap the days you&apos;re free ☕
             </Text>
           )}
           <Button

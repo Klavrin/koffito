@@ -5,6 +5,7 @@ import { Screen } from "@/components/layout";
 import { SettingsRow, SettingsSection } from "@/components/settings/settings-section";
 import { Header, Modal, Text } from "@/components/ui";
 import { useSession } from "@/context/session";
+import { goBack } from "@/lib/navigation";
 
 export default function SettingsPage() {
   const { signOut } = useSession();
@@ -15,7 +16,7 @@ export default function SettingsPage() {
   const [signOutOpen, setSignOutOpen] = useState(false);
 
   return (
-    <Screen header={<Header title="Settings" onBack={router.back} />}>
+    <Screen header={<Header title="Settings" onBack={goBack} />}>
       <SettingsSection title="Account">
         <SettingsRow
           icon="person-outline"

@@ -4,7 +4,7 @@ import { Linking, View } from "react-native";
 
 import { EventHero } from "@/components/events/event-hero";
 import { InfoRow } from "@/components/events/info-row";
-import { LocationCountdown, REVEAL_BEFORE_MS } from "@/components/events/location-countdown";
+import { LocationCountdown } from "@/components/events/location-countdown";
 import { PeopleLikeThis } from "@/components/events/people-like-this";
 import { PopularTimesChart } from "@/components/events/popular-times-chart";
 import { RateExperienceSheet } from "@/components/events/rate-experience-sheet";
@@ -14,8 +14,9 @@ import { Screen, Section } from "@/components/layout";
 import { Button, Card, ErrorState, Header, IconButton, Modal, Text, useToast } from "@/components/ui";
 import { useEvents } from "@/context/events";
 import { getCafe, popularTimeLabels } from "@/data/cafes";
-import { isUpcoming } from "@/data/events";
+import { getRevealTime, isLocationHidden, isUpcoming } from "@/data/events";
 import { formatDateTime } from "@/lib/date";
+import { goBack } from "@/lib/navigation";
 
 export default function EventDetailsPage() {
   // `id` opens a coffee talk; `cafeId` opens a café on its own (e.g. from "Cafés you've visited").
@@ -32,15 +33,14 @@ export default function EventDetailsPage() {
 
   if (!cafe) {
     return (
-      <Screen header={<Header title="Coffee talk" onBack={router.back} />} contentClassName="flex-1 justify-center">
-        <ErrorState title="We lost this coffee talk" description="It may have been cancelled or removed." retryLabel="Go back" onRetry={router.back} />
+      <Screen header={<Header title="Coffee talk" onBack={goBack} />} contentClassName="flex-1 justify-center">
+        <ErrorState title="We lost this coffee talk" description="It may have been cancelled or removed." retryLabel="Go back" onRetry={goBack} />
       </Screen>
     );
   }
 
   const upcoming = !!event && isUpcoming(event);
-  const revealAt = event && new Date(event.date.getTime() - REVEAL_BEFORE_MS);
-  const hidden = !!event?.locationHidden && upcoming && !!revealAt && revealAt.getTime() > Date.now();
+  const hidden = !!event && isLocationHidden(event);
   const spotsLeft = event ? event.maxParticipants - event.participants.length : 0;
 
   const openReport = () => {
@@ -59,13 +59,13 @@ export default function EventDetailsPage() {
     cancelEvent(event.id);
     setCancelOpen(false);
     toast.show({ title: "Coffee talk cancelled", message: "Maybe next time ☕", variant: "info" });
-    router.back();
+    goBack();
   };
 
   const handleJoin = () => {
     if (!event) return;
     joinEvent(event.id);
-    toast.show({ title: "You're in! ☕", message: `We saved you a seat at ${cafe.name}.`, variant: "success" });
+    toast.show({ title: "You're in! ☕", message: `We saved you a seat at ${cafe.name}`, variant: "success" });
   };
 
   const footer = !event || !upcoming ? undefined : event.joined ? (
@@ -79,10 +79,10 @@ export default function EventDetailsPage() {
       <EventHero
         photo={cafe.photo}
         hidden={hidden}
-        onBack={router.back}
+        onBack={goBack}
         accessibilityLabel={hidden ? "Hidden café picture" : `Photo of ${cafe.name}`}
         actions={<IconButton icon="flag-outline" accessibilityLabel="Report a problem" onPress={openReport} />}>
-        {hidden && revealAt && <LocationCountdown revealAt={revealAt} />}
+        {hidden && event && <LocationCountdown revealAt={getRevealTime(event)} />}
       </EventHero>
 
       <View className="gap-6 px-5">

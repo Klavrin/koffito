@@ -51,14 +51,16 @@ export default function ProfilePage() {
           {personality && <Badge label={`${personality.emoji} ${personality.label.split(" (")[0]}`} variant="primary" />}
           {meetup && <Badge label={`${meetup.emoji} ${meetup.label.split(" (")[0]}`} />}
         </View>
-        <Button
-          title="Edit profile"
-          variant="secondary"
-          size="sm"
-          leftIcon="create-outline"
-          className="self-center"
-          onPress={() => router.push("/survey-profile-settings")}
-        />
+        {/* Button aligns itself to the start, so center it with a row. */}
+        <View className="flex-row justify-center">
+          <Button
+            title="Edit profile"
+            variant="secondary"
+            size="sm"
+            leftIcon="create-outline"
+            onPress={() => router.push("/survey-profile-settings")}
+          />
+        </View>
       </View>
 
       <Card className="flex-row">
