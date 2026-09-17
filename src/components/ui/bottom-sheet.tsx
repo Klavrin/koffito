@@ -4,15 +4,16 @@ import {
   Platform,
   Pressable,
   Modal as RNModal,
+  StyleSheet,
   useWindowDimensions,
   View,
 } from "react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
+  Easing,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -56,11 +57,15 @@ export function BottomSheet({
     if (visible) {
       setMounted(true);
       translateY.value = screenHeight;
-      translateY.value = withSpring(0, { damping: 22, stiffness: 240 });
+      translateY.value = withTiming(0, { duration: motion.slow, easing: Easing.out(Easing.cubic) });
     } else if (mounted) {
-      translateY.value = withTiming(screenHeight, { duration: motion.base }, (finished) => {
-        if (finished) scheduleOnRN(setMounted, false);
-      });
+      translateY.value = withTiming(
+        screenHeight,
+        { duration: motion.base, easing: Easing.in(Easing.cubic) },
+        (finished) => {
+          if (finished) scheduleOnRN(setMounted, false);
+        },
+      );
     }
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -74,7 +79,7 @@ export function BottomSheet({
       if (event.translationY > DISMISS_DISTANCE || event.velocityY > DISMISS_VELOCITY) {
         scheduleOnRN(onClose);
       } else {
-        translateY.value = withSpring(0, motion.spring);
+        translateY.value = withTiming(0, { duration: motion.base, easing: Easing.out(Easing.cubic) });
       }
     });
 
@@ -96,11 +101,12 @@ export function BottomSheet({
       onRequestClose={dismissible ? onClose : undefined}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ThemeScope>
-          <Animated.View style={backdropStyle} className="absolute inset-0 bg-overlay/40">
+          {/* Animated wrappers stay class-less; colors live on the plain views inside them. */}
+          <Animated.View style={[StyleSheet.absoluteFill, backdropStyle]}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close"
-              className="flex-1"
+              className="flex-1 bg-overlay/40"
               disabled={!dismissible}
               onPress={onClose}
             />
@@ -111,18 +117,23 @@ export function BottomSheet({
             pointerEvents="box-none"
             className="flex-1 justify-end">
             <GestureDetector gesture={pan}>
-              <Animated.View
-                accessibilityViewIsModal
-                style={[sheetStyle, { boxShadow: shadows.raised, paddingBottom: Math.max(insets.bottom, 20) }]}
-                className={cn("max-h-[90%] rounded-t-sheet bg-surface px-6 pt-3", className)}>
-                <View className="mb-4 h-1.5 w-11 self-center rounded-full bg-border" />
-                {(title || description) && (
-                  <View className="mb-4 gap-1">
-                    {title && <Text variant="title">{title}</Text>}
-                    {description && <Text tone="muted">{description}</Text>}
-                  </View>
-                )}
-                {children}
+              <Animated.View accessibilityViewIsModal style={sheetStyle}>
+                <View
+                  style={{
+                    boxShadow: shadows.raised,
+                    paddingBottom: Math.max(insets.bottom, 20),
+                    maxHeight: screenHeight * 0.9,
+                  }}
+                  className={cn("rounded-t-sheet bg-surface px-6 pt-3", className)}>
+                  <View className="mb-4 h-1.5 w-11 self-center rounded-full bg-border" />
+                  {(title || description) && (
+                    <View className="mb-4 gap-1">
+                      {title && <Text variant="title">{title}</Text>}
+                      {description && <Text tone="muted">{description}</Text>}
+                    </View>
+                  )}
+                  {children}
+                </View>
               </Animated.View>
             </GestureDetector>
           </KeyboardAvoidingView>

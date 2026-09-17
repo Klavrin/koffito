@@ -1,10 +1,8 @@
 import { Pressable, View } from "react-native";
-import Animated, { LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { cn } from "@/lib/cn";
 import { useKoffitoTheme } from "@/theme/theme-provider";
-import { motion } from "@/theme/tokens";
 import { Icon, type IconName } from "./icon";
 import { Text } from "./text";
 
@@ -48,8 +46,7 @@ export function TabBar({ items, activeKey, onChange, safeArea = true, className 
               accessibilityState={{ selected: active }}
               onPress={() => onChange(item.key)}
               className={cn(!active && "flex-1 items-center")}>
-              <Animated.View
-                layout={LinearTransition.duration(motion.base)}
+              <View
                 className={cn(
                   "h-12 flex-row items-center justify-center gap-2 rounded-full",
                   active ? "bg-primary px-5" : "w-12",
@@ -67,7 +64,7 @@ export function TabBar({ items, activeKey, onChange, safeArea = true, className 
                     {item.label}
                   </Text>
                 )}
-              </Animated.View>
+              </View>
             </Pressable>
           );
         })}
