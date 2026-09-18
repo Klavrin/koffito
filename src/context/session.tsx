@@ -16,7 +16,7 @@ const returningProfile: Profile = {
   firstName: "George",
   email: "george@koffito.app",
   avatar: "🦊",
-  gender: "Man",
+  gender: "Male",
   age: "28",
   occupation: "Product designer",
   favoriteCoffee: "Flat white",
