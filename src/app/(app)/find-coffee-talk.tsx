@@ -17,13 +17,16 @@ import { dayKey, formatDate, formatTime } from "@/lib/date";
 import { goBack } from "@/lib/navigation";
 
 export default function FindCoffeeTalkPage() {
-  const { events } = useEvents();
+  const { events, joinEvent, leaveEvent } = useEvents();
   const toast = useToast();
   const [selectedDay, setSelectedDay] = useState<string>();
   const [selectedEvent, setSelectedEvent] = useState<string>();
 
   const available = events
-    .filter((event) => !event.joined && isUpcoming(event))
+    .filter(
+      (event) =>
+        (!event.joined || event.id === selectedEvent) && isUpcoming(event),
+    )
     .sort((a, b) => a.date.getTime() - b.date.getTime());
   const availableDays = [
     ...new Set(available.map((event) => dayKey(event.date))),
@@ -33,13 +36,30 @@ export default function FindCoffeeTalkPage() {
     : available;
 
   const handleSelect = (eventId: string) => {
+    joinEvent(eventId);
     setSelectedEvent(eventId);
     toast.show({
-      title: "Time selected",
-      message: "The cafe and guests will be revealed closer to the meetup.",
+      title: "Coffee talk confirmed",
+      message:
+        "Your time is saved. The café and guests will be revealed closer to the meetup.",
       variant: "success",
     });
   };
+
+  const handleCancel = () => {
+    if (!selectedEvent) return;
+    leaveEvent(selectedEvent);
+    setSelectedEvent(undefined);
+    toast.show({
+      title: "Coffee talk cancelled",
+      message: "You can choose another time whenever you are ready.",
+      variant: "info",
+    });
+  };
+
+  const selectedEventDetails = selectedEvent
+    ? events.find((event) => event.id === selectedEvent)
+    : undefined;
 
   return (
     <Screen
@@ -61,6 +81,29 @@ export default function FindCoffeeTalkPage() {
         />
       ) : (
         <View className="gap-6">
+          {selectedEventDetails && (
+            <Card
+              padding="sm"
+              className="flex-row items-center justify-between gap-3 border border-primary"
+            >
+              <View className="flex-1 gap-0.5">
+                <Text variant="label" tone="primary">
+                  Time confirmed
+                </Text>
+                <Text variant="caption" tone="muted">
+                  {formatDate(selectedEventDetails.date)} at{" "}
+                  {formatTime(selectedEventDetails.date)}
+                </Text>
+              </View>
+              <Button
+                title="Cancel"
+                variant="outline"
+                size="sm"
+                onPress={handleCancel}
+              />
+            </Card>
+          )}
+
           <View className="gap-3">
             <View className="gap-1">
               <Text variant="heading">Choose a date</Text>
