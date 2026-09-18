@@ -18,7 +18,12 @@ import {
 export default function RegisterPage() {
   const { signIn } = useSession();
 
-  const [form, setForm] = useState({ name: "", email: "", password: "", confirmation: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmation: "",
+  });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -31,7 +36,8 @@ export default function RegisterPage() {
     password: validatePassword(form.password),
     confirmation: validatePasswordMatch(form.password, form.confirmation),
   };
-  const showError = (field: keyof typeof errors) => (submitted ? errors[field] : undefined);
+  const showError = (field: keyof typeof errors) =>
+    submitted ? errors[field] : undefined;
 
   const handleRegister = () => {
     setSubmitted(true);
@@ -51,9 +57,18 @@ export default function RegisterPage() {
 
   return (
     <Screen
-      header={<Header title="" onBack={router.canGoBack() ? router.back : undefined} />}
-      contentClassName="gap-8 pt-4">
-      <AuthHero title="Create your account" subtitle="A few details and you're ready for your first coffee talk." />
+      header={
+        <Header
+          title=""
+          onBack={router.canGoBack() ? router.back : undefined}
+        />
+      }
+      contentClassName="gap-8 pt-4"
+    >
+      <AuthHero
+        title="Create your account"
+        subtitle="A few details and you're ready for your first coffee talk."
+      />
 
       <View className="gap-4">
         <Input
@@ -100,8 +115,18 @@ export default function RegisterPage() {
       </View>
 
       <View className="gap-2">
-        <Button title="Register" size="lg" fullWidth loading={loading} onPress={handleRegister} />
-        <AuthSwitchLink prompt="Already have an account?" actionLabel="Log in" onPress={() => router.replace("/login")} />
+        <Button
+          title="Register"
+          size="lg"
+          fullWidth
+          loading={loading}
+          onPress={handleRegister}
+        />
+        <AuthSwitchLink
+          prompt="Already have an account?"
+          actionLabel="Log in"
+          onPress={() => router.replace("/login")}
+        />
       </View>
     </Screen>
   );
