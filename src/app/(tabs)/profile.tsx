@@ -21,6 +21,7 @@ import { users } from "@/data/users";
 
 /** Survey questions surfaced on the profile, in display order. */
 const interestGroups = [
+  { key: "motivation", title: "Why I'm here" },
   { key: "hobbies", title: "Hobbies" },
   { key: "topics", title: "Loves talking about" },
 ];

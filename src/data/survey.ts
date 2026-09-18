@@ -12,7 +12,7 @@ export type SurveyQuestion = {
 
 export const motivationQuestion: SurveyQuestion = {
   key: "motivation",
-  section: "Profile",
+  section: "Interests",
   question: "Why do you want to use Koffito?",
   max: 5,
   options: [

@@ -17,11 +17,11 @@ import type { SurveyAnswers } from "@/types/koffito";
 type Step = { kind: "question"; question: SurveyQuestion } | { kind: "about" };
 
 const onboardingSteps: Step[] = [
-  { kind: "question", question: motivationQuestion },
   { kind: "about" },
+  { kind: "question", question: motivationQuestion },
   ...interestQuestions.map((question) => ({ kind: "question" as const, question })),
 ];
-const interestSteps: Step[] = interestQuestions.map((question) => ({ kind: "question", question }));
+const interestSteps: Step[] = [motivationQuestion, ...interestQuestions].map((question) => ({ kind: "question", question }));
 
 const choiceHint = (max: number) => (max === 1 ? "Choose 1" : `Choose up to ${max}`);
 
