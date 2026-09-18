@@ -62,8 +62,16 @@ export const interestQuestions: SurveyQuestion[] = [
     max: 1,
     options: [
       { key: "quick", emoji: "⚡", label: "Quick coffee (30 - 60 min)" },
-      { key: "long", emoji: "🛋️", label: "Long coffee (forget about time limits)" },
-      { key: "active", emoji: "🎳", label: "Active coffee (coffee and a fun activity)" },
+      {
+        key: "long",
+        emoji: "🛋️",
+        label: "Long coffee (forget about time limits)",
+      },
+      {
+        key: "active",
+        emoji: "🎳",
+        label: "Active coffee (coffee and a fun activity)",
+      },
     ],
   },
   {
@@ -74,20 +82,58 @@ export const interestQuestions: SurveyQuestion[] = [
     options: [
       { key: "introvert", emoji: "🌙", label: "Introvert" },
       { key: "extrovert", emoji: "☀️", label: "Extrovert" },
-      { key: "ambivert", emoji: "🌗", label: "Ambivert (somewhere in between)" },
+      {
+        key: "ambivert",
+        emoji: "🌗",
+        label: "Ambivert (somewhere in between)",
+      },
     ],
   },
 ];
 
 export const surveyQuestions = [motivationQuestion, ...interestQuestions];
 
-export const avatarOptions = ["☕", "🦊", "🐻", "🐱", "🦉", "🐼", "🌻", "🍩", "🥐", "🎧", "📚", "🌈"];
+export const avatarOptions = [
+  "☕",
+  "🦊",
+  "🐻",
+  "🐱",
+  "🦉",
+  "🐼",
+  "🌻",
+  "🍩",
+  "🥐",
+  "🎧",
+  "📚",
+  "🌈",
+];
 
-export const genderOptions = ["Woman", "Man", "Non-binary", "Prefer not to say"];
+export const genderOptions = [
+  "Woman",
+  "Man",
+  "Non-binary",
+  "Prefer not to say",
+];
 
-export const coffeeOptions = ["Espresso", "Flat white", "Cappuccino", "Latte", "Filter", "Iced coffee", "Tea, actually"];
+export const coffeeOptions = [
+  "Espresso",
+  "Americano",
+  "Flat white",
+  "Cappuccino",
+  "Latte",
+  "Mocha",
+  "Macchiato",
+  "Cortado",
+  "Filter",
+  "Cold brew",
+  "Iced coffee",
+  "Chai latte",
+  "Tea, actually",
+];
 
 /** Looks up the display option for a stored survey answer. */
 export function findSurveyOption(questionKey: string, optionKey: string) {
-  return surveyQuestions.find((q) => q.key === questionKey)?.options.find((o) => o.key === optionKey);
+  return surveyQuestions
+    .find((q) => q.key === questionKey)
+    ?.options.find((o) => o.key === optionKey);
 }

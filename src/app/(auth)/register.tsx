@@ -18,7 +18,12 @@ import {
 export default function RegisterPage() {
   const { signIn } = useSession();
 
-  const [form, setForm] = useState({ name: "", surname: "", email: "", password: "", confirmation: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmation: "",
+  });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -31,7 +36,8 @@ export default function RegisterPage() {
     password: validatePassword(form.password),
     confirmation: validatePasswordMatch(form.password, form.confirmation),
   };
-  const showError = (field: keyof typeof errors) => (submitted ? errors[field] : undefined);
+  const showError = (field: keyof typeof errors) =>
+    submitted ? errors[field] : undefined;
 
   const handleRegister = () => {
     setSubmitted(true);
@@ -43,7 +49,6 @@ export default function RegisterPage() {
       () =>
         signIn({
           firstName: form.name.trim(),
-          lastName: form.surname.trim() || undefined,
           email: form.email.trim(),
         }),
       600,
@@ -52,30 +57,28 @@ export default function RegisterPage() {
 
   return (
     <Screen
-      header={<Header title="" onBack={router.canGoBack() ? router.back : undefined} />}
-      contentClassName="gap-8 pt-4">
-      <AuthHero title="Create your account" subtitle="A few details and you're ready for your first coffee talk." />
+      header={
+        <Header
+          title=""
+          onBack={router.canGoBack() ? router.back : undefined}
+        />
+      }
+      contentClassName="gap-8 pt-4"
+    >
+      <AuthHero
+        title="Create your account"
+        subtitle="A few details and you're ready for your first coffee talk."
+      />
 
       <View className="gap-4">
-        <View className="flex-row gap-3">
-          <Input
-            className="flex-1"
-            label="Name"
-            placeholder="George"
-            textContentType="givenName"
-            value={form.name}
-            onChangeText={setField("name")}
-            error={showError("name")}
-          />
-          <Input
-            className="flex-1"
-            label="Surname"
-            placeholder="Optional"
-            textContentType="familyName"
-            value={form.surname}
-            onChangeText={setField("surname")}
-          />
-        </View>
+        <Input
+          label="First name"
+          placeholder="George"
+          textContentType="givenName"
+          value={form.name}
+          onChangeText={setField("name")}
+          error={showError("name")}
+        />
         <Input
           label="Email"
           placeholder="you@example.com"
@@ -112,8 +115,18 @@ export default function RegisterPage() {
       </View>
 
       <View className="gap-2">
-        <Button title="Register" size="lg" fullWidth loading={loading} onPress={handleRegister} />
-        <AuthSwitchLink prompt="Already have an account?" actionLabel="Log in" onPress={() => router.replace("/login")} />
+        <Button
+          title="Register"
+          size="lg"
+          fullWidth
+          loading={loading}
+          onPress={handleRegister}
+        />
+        <AuthSwitchLink
+          prompt="Already have an account?"
+          actionLabel="Log in"
+          onPress={() => router.replace("/login")}
+        />
       </View>
     </Screen>
   );
