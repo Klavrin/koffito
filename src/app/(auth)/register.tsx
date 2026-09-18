@@ -18,7 +18,7 @@ import {
 export default function RegisterPage() {
   const { signIn } = useSession();
 
-  const [form, setForm] = useState({ name: "", surname: "", email: "", password: "", confirmation: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", confirmation: "" });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -43,7 +43,6 @@ export default function RegisterPage() {
       () =>
         signIn({
           firstName: form.name.trim(),
-          lastName: form.surname.trim() || undefined,
           email: form.email.trim(),
         }),
       600,
@@ -57,25 +56,14 @@ export default function RegisterPage() {
       <AuthHero title="Create your account" subtitle="A few details and you're ready for your first coffee talk." />
 
       <View className="gap-4">
-        <View className="flex-row gap-3">
-          <Input
-            className="flex-1"
-            label="Name"
-            placeholder="George"
-            textContentType="givenName"
-            value={form.name}
-            onChangeText={setField("name")}
-            error={showError("name")}
-          />
-          <Input
-            className="flex-1"
-            label="Surname"
-            placeholder="Optional"
-            textContentType="familyName"
-            value={form.surname}
-            onChangeText={setField("surname")}
-          />
-        </View>
+        <Input
+          label="First name"
+          placeholder="George"
+          textContentType="givenName"
+          value={form.name}
+          onChangeText={setField("name")}
+          error={showError("name")}
+        />
         <Input
           label="Email"
           placeholder="you@example.com"
