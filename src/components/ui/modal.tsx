@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { Pressable, Modal as RNModal, View } from "react-native";
-import Animated, { ZoomIn } from "react-native-reanimated";
+import Animated, { Easing, withTiming } from "react-native-reanimated";
 
 import { cn } from "@/lib/cn";
 import { ThemeScope, useKoffitoTheme } from "@/theme/theme-provider";
@@ -24,6 +24,20 @@ export type ModalProps = PropsWithChildren<{
   dismissible?: boolean;
   className?: string;
 }>;
+
+/** Soft fade + slight scale-up, eased out with no overshoot. */
+function cardEntering() {
+  "worklet";
+  const config = { duration: motion.base, easing: Easing.out(Easing.cubic) };
+
+  return {
+    initialValues: { opacity: 0, transform: [{ scale: 0.95 }] },
+    animations: {
+      opacity: withTiming(1, config),
+      transform: [{ scale: withTiming(1, config) }],
+    },
+  };
+}
 
 export function Modal({
   visible,
@@ -59,40 +73,40 @@ export function Modal({
           />
 
           {visible && (
-            <Animated.View
-              accessibilityViewIsModal
-              entering={ZoomIn.duration(motion.base).springify().damping(18)}
-              style={{ boxShadow: shadows.raised }}
-              className={cn("w-full max-w-sm items-center gap-5 rounded-[32px] bg-surface p-6", className)}>
-              {(emoji || icon) && (
-                <View className="h-16 w-16 items-center justify-center rounded-full bg-secondary">
-                  {emoji ? (
-                    <Text className="text-3xl leading-10">{emoji}</Text>
-                  ) : (
-                    icon && <Icon name={icon} size={28} color="on-secondary" />
+            <Animated.View accessibilityViewIsModal entering={cardEntering} className="w-full max-w-sm">
+              <View
+                style={{ boxShadow: shadows.raised }}
+                className={cn("items-center gap-5 rounded-[32px] bg-surface p-6", className)}>
+                {(emoji || icon) && (
+                  <View className="h-16 w-16 items-center justify-center rounded-full bg-secondary">
+                    {emoji ? (
+                      <Text className="text-3xl leading-10">{emoji}</Text>
+                    ) : (
+                      icon && <Icon name={icon} size={28} color="on-secondary" />
+                    )}
+                  </View>
+                )}
+
+                <View className="items-center gap-1.5">
+                  <Text variant="title" className="text-center" accessibilityRole="header">
+                    {title}
+                  </Text>
+                  {description && (
+                    <Text tone="muted" className="text-center">
+                      {description}
+                    </Text>
                   )}
                 </View>
-              )}
 
-              <View className="items-center gap-1.5">
-                <Text variant="title" className="text-center" accessibilityRole="header">
-                  {title}
-                </Text>
-                {description && (
-                  <Text tone="muted" className="text-center">
-                    {description}
-                  </Text>
+                {children}
+
+                {(primaryAction || secondaryAction) && (
+                  <View className="gap-2 self-stretch">
+                    {primaryAction && <Button fullWidth {...primaryAction} />}
+                    {secondaryAction && <Button variant="ghost" fullWidth {...secondaryAction} />}
+                  </View>
                 )}
               </View>
-
-              {children}
-
-              {(primaryAction || secondaryAction) && (
-                <View className="gap-2 self-stretch">
-                  {primaryAction && <Button fullWidth {...primaryAction} />}
-                  {secondaryAction && <Button variant="ghost" fullWidth {...secondaryAction} />}
-                </View>
-              )}
             </Animated.View>
           )}
         </View>

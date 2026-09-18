@@ -10,6 +10,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { ToastProvider } from "@/components/ui/toast";
+import { EventsProvider } from "@/context/events";
 import { SessionProvider, useSession } from "@/context/session";
 import { KoffitoThemeProvider } from "@/theme/theme-provider";
 import "../../global.css";
@@ -34,7 +35,9 @@ export default function RootLayout() {
       <KoffitoThemeProvider>
         <ToastProvider>
           <SessionProvider>
-            <RootNavigator />
+            <EventsProvider>
+              <RootNavigator />
+            </EventsProvider>
           </SessionProvider>
         </ToastProvider>
       </KoffitoThemeProvider>
