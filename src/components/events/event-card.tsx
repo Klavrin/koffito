@@ -35,7 +35,7 @@ export function EventCard({ event, onPress, animateIn }: EventCardProps) {
           {/* Marks the blurred photo as deliberately hidden, not a failed image. */}
           {hidden && (
             <View className="absolute inset-0 items-center justify-center">
-              <Text className="text-[40px] leading-[48px]">?</Text>
+              <Text className="text-[40px] leading-[48px] text-white">?</Text>
             </View>
           )}
         </View>

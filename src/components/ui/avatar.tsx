@@ -12,6 +12,8 @@ export type AvatarStatus = "online" | "away" | "busy";
 
 export type AvatarProps = {
   name: string;
+  /** Emoji avatar; takes priority over `source`. */
+  emoji?: string;
   source?: ImageSource | string | null;
   size?: AvatarSize;
   status?: AvatarStatus;
@@ -46,7 +48,7 @@ function toneIndex(name: string) {
   return hash % avatarTones.light.length;
 }
 
-export function Avatar({ name, source, size = "md", status, badge, className }: AvatarProps) {
+export function Avatar({ name, emoji, source, size = "md", status, badge, className }: AvatarProps) {
   const { scheme } = useKoffitoTheme();
   const { px, text, dot } = sizes[size];
 
@@ -56,7 +58,13 @@ export function Avatar({ name, source, size = "md", status, badge, className }: 
       accessibilityLabel={status ? `${name}, ${status}` : name}
       style={{ width: px, height: px }}
       className={className}>
-      {source ? (
+      {emoji ? (
+        <View
+          style={{ width: px, height: px, backgroundColor: avatarTones[scheme][toneIndex(name)] }}
+          className="items-center justify-center rounded-full">
+          <Text style={{ fontSize: px * 0.5, lineHeight: px * 0.66 }}>{emoji}</Text>
+        </View>
+      ) : source ? (
         <Image
           source={source}
           contentFit="cover"
@@ -87,7 +95,7 @@ export function Avatar({ name, source, size = "md", status, badge, className }: 
 }
 
 export type AvatarGroupProps = {
-  people: { name: string; source?: AvatarProps["source"] }[];
+  people: { name: string; emoji?: string; source?: AvatarProps["source"] }[];
   size?: AvatarSize;
   max?: number;
 };
@@ -105,7 +113,7 @@ export function AvatarGroup({ people, size = "sm", max = 3 }: AvatarGroupProps) 
           key={`${person.name}-${index}`}
           style={{ marginLeft: index === 0 ? 0 : -px / 3 }}
           className="rounded-full border-2 border-surface">
-          <Avatar name={person.name} source={person.source} size={size} />
+          <Avatar name={person.name} emoji={person.emoji} source={person.source} size={size} />
         </View>
       ))}
       {extra > 0 && (

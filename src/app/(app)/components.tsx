@@ -140,7 +140,7 @@ export default function ComponentsScreen() {
 
         <Section title="Avatars & badges">
           <View className="flex-row items-end gap-3">
-            <Avatar name="Maya Lopez" source={maya.photo} size="xl" status="online" />
+            <Avatar name="Maya Lopez" emoji={maya.emoji} size="xl" status="online" />
             <Avatar name="Sam Carter" size="lg" status="away" />
             <Avatar name="Alex Kim" size="md" status="busy" />
             <Avatar name="Jo" size="sm" badge={<Text>☕</Text>} />

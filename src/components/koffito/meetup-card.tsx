@@ -57,7 +57,7 @@ export function MeetupCard({ meetup, onPress, onAccept, onDecline, animateIn }: 
       </View>
 
       <View className="flex-row items-center justify-between">
-        <AvatarGroup people={participants.map((person) => ({ name: person.name, source: person.photo }))} />
+        <AvatarGroup people={participants.map((person) => ({ name: person.name, emoji: person.emoji }))} />
         <MeetupStatus status={status} />
       </View>
 

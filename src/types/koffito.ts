@@ -9,6 +9,8 @@ export type User = {
   name: string;
   age?: number;
   bio?: string;
+  /** Emoji avatar; Koffito shows emojis rather than real photos of people. */
+  emoji?: string;
   photo?: ImageSource | string | null;
   interests: Interest[];
   location?: string;
