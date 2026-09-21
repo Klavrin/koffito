@@ -55,8 +55,10 @@ export function MatchCard({
     <Animated.View entering={FadeInUp.duration(motion.slow)}>
       <Card padding="none" className="overflow-hidden">
         <View style={{ height: PHOTO_HEIGHT }} className="bg-secondary">
-          {user.photo ? (
-            <Image source={user.photo} contentFit="cover" transition={250} style={{ flex: 1 }} />
+          {user.emoji ? (
+            <View className="flex-1 items-center justify-center">
+              <Text className="text-[64px] leading-[76px]">{user.emoji}</Text>
+            </View>
           ) : (
             <View className="flex-1 items-center justify-center">
               <Avatar name={user.name} size="xl" />

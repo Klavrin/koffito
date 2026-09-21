@@ -1,124 +1,96 @@
-import * as Device from 'expo-device';
-import { router } from 'expo-router';
-import { Button, Platform, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Redirect, router } from "expo-router";
+import { ScrollView } from "react-native";
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { CafeVisitedCard } from "@/components/home/cafe-visited-card";
+import { NextCoffeeCard } from "@/components/home/next-coffee-card";
+import { Screen, Section } from "@/components/layout";
+import { EmojiAvatar } from "@/components/profile/emoji-avatar";
+import { Button, Header, IconButton } from "@/components/ui";
+import { useEvents } from "@/context/events";
+import { useSession } from "@/context/session";
+import { visitedCafes } from "@/data/cafes";
+import { isUpcoming } from "@/data/events";
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
+export default function HomePage() {
+  const { profile } = useSession();
+  const { events } = useEvents();
+
+  // Fresh accounts finish the survey before seeing Home.
+  if (!profile.onboarded) {
+    return <Redirect href="/survey" />;
   }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+
+  const upcoming = events
+    .filter((event) => event.joined && isUpcoming(event))
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+  const nextEvent = upcoming[0];
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <Screen
+      tabBarInset
+      header={
+        <Header
+          size="large"
+          title={`Welcome back, ${profile.firstName}!`}
+          subtitle="Who will you meet over coffee this week?"
+          right={
+            <>
+              <IconButton
+                icon="settings-outline"
+                accessibilityLabel="Settings"
+                onPress={() => router.push("/settings")}
+              />
+              <EmojiAvatar emoji={profile.avatar} size="sm" />
+            </>
+          }
+        />
+      }
+    >
+      {nextEvent && (
+        <NextCoffeeCard
+          event={nextEvent}
+          onPress={() =>
+            router.push({
+              pathname: "/event-details",
+              params: { id: nextEvent.id },
+            })
+          }
+        />
+      )}
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <ThemedView style={styles.heroSection}>
-            <AnimatedIcon />
-            <ThemedText type="title" style={styles.title}>
-              Welcome to&nbsp;Expo
-            </ThemedText>
-          </ThemedView>
+      <Button
+        title="Find coffee talk"
+        size="lg"
+        fullWidth
+        leftIcon="cafe"
+        onPress={() => router.push("/find-coffee-talk")}
+      />
 
-          <ThemedText type="code" style={styles.code}>
-            get started
-          </ThemedText>
-
-          <ThemedView type="backgroundElement" style={styles.stepContainer}>
-            <HintRow
-              title="Try editing"
-              hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
+      <Section
+        title="Cafés you've visited"
+        actionLabel="Find more"
+        onAction={() => router.push("/find-coffee-talk")}
+      >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="-mx-5"
+          contentContainerClassName="gap-3 px-5 py-2"
+        >
+          {visitedCafes.map((cafe) => (
+            <CafeVisitedCard
+              key={cafe.id}
+              cafe={cafe}
+              onPress={() =>
+                router.push({
+                  pathname: "/event-details",
+                  params: { cafeId: cafe.id },
+                })
+              }
             />
-            <HintRow title="Dev tools" hint={getDevMenuHint()} />
-            <HintRow
-              title="Fresh start"
-              hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-            />
-          </ThemedView>
-
-          <ThemedView type="backgroundElement" style={styles.pageLinks}>
-            <ThemedText type="subtitle">Pages</ThemedText>
-            <Button title="Survey" onPress={() => router.push("/survey")} />
-            <Button
-              title="Survey profile settings"
-              onPress={() => router.push("/survey-profile-settings")}
-            />
-            <Button title="Profile" onPress={() => router.push("/profile")} />
-            <Button title="Settings" onPress={() => router.push("/settings")} />
-            <Button title="Admin" onPress={() => router.push("/admin")} />
-            <Button title="Create event" onPress={() => router.push("/create-event")} />
-            <Button title="Events" onPress={() => router.push("/events")} />
-            <Button title="Event details" onPress={() => router.push("/event-details")} />
-          </ThemedView>
-
-          {Platform.OS === 'web' && <WebBadge />}
+          ))}
         </ScrollView>
-      </SafeAreaView>
-    </ThemedView>
+      </Section>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  scrollContent: {
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
-  pageLinks: {
-    alignSelf: 'stretch',
-    gap: Spacing.two,
-    padding: Spacing.three,
-    borderRadius: Spacing.four,
-  },
-});

@@ -10,11 +10,15 @@ import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { ToastProvider } from "@/components/ui/toast";
+import { EventsProvider } from "@/context/events";
 import { SessionProvider, useSession } from "@/context/session";
 import { KoffitoThemeProvider } from "@/theme/theme-provider";
 import "../../global.css";
 
 SplashScreen.preventAutoHideAsync();
+
+// DEV ONLY — start on the dev jump-menu. Remove this line and `src/app/dev.tsx` to restore normal startup.
+export const unstable_settings = { initialRouteName: "dev" };
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -34,7 +38,9 @@ export default function RootLayout() {
       <KoffitoThemeProvider>
         <ToastProvider>
           <SessionProvider>
-            <RootNavigator />
+            <EventsProvider>
+              <RootNavigator />
+            </EventsProvider>
           </SessionProvider>
         </ToastProvider>
       </KoffitoThemeProvider>
@@ -43,7 +49,9 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { session } = useSession();
+  const { session, isLoading } = useSession();
+
+  if (isLoading) return null;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
@@ -54,6 +62,8 @@ function RootNavigator() {
       <Stack.Protected guard={!session}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
+      {/* DEV ONLY — unguarded so it is reachable in either session state. */}
+      <Stack.Screen name="dev" />
     </Stack>
   );
 }

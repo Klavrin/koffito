@@ -10,7 +10,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { cn } from "@/lib/cn";
 import { useKoffitoTheme } from "@/theme/theme-provider";
-import { motion } from "@/theme/tokens";
 import { Icon, type IconName } from "./icon";
 import { Text } from "./text";
 
