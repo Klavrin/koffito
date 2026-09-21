@@ -23,14 +23,22 @@ export function EventCard({ event, onPress, animateIn }: EventCardProps) {
   return (
     <Card onPress={onPress} animateIn={animateIn} padding="sm" className="gap-3">
       <View className="flex-row gap-3">
-        <Image
-          source={event.cafe.photo}
-          contentFit="cover"
-          transition={200}
-          blurRadius={hidden ? 40 : 0}
-          accessibilityLabel={hidden ? "Mystery café" : `Photo of ${event.cafe.name}`}
-          style={{ width: 92, height: 92, borderRadius: 20 }}
-        />
+        <View>
+          <Image
+            source={event.cafe.photo}
+            contentFit="cover"
+            transition={200}
+            blurRadius={hidden ? 40 : 0}
+            accessibilityLabel={hidden ? "Locked café" : `Photo of ${event.cafe.name}`}
+            style={{ width: 92, height: 92, borderRadius: 20 }}
+          />
+          {/* Marks the blurred photo as deliberately hidden, not a failed image. */}
+          {hidden && (
+            <View className="absolute inset-0 items-center justify-center">
+              <Text className="text-[40px] leading-[48px]">?</Text>
+            </View>
+          )}
+        </View>
         <View className="flex-1 justify-center gap-1.5">
           <Text variant="heading" numberOfLines={1}>
             {getCafeLabel(event)}

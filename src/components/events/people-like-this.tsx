@@ -15,7 +15,7 @@ export function PeopleLikeThis({ people, caption }: PeopleLikeThisProps) {
   if (people.length === 0) {
     return (
       <Text variant="caption" tone="muted">
-        No one has joined yet — be the first ☕
+        No one has joined yet — be the first.
       </Text>
     );
   }

@@ -17,6 +17,7 @@ export const events: CoffeeEvent[] = [
     participants: [users[0], users[1], users[2]],
     maxParticipants: 4,
     status: "confirmed",
+    locationHidden: true,
     joined: true,
   },
   {
@@ -36,6 +37,7 @@ export const events: CoffeeEvent[] = [
     participants: [users[5]],
     maxParticipants: 5,
     status: "pending",
+    locationHidden: true,
     joined: true,
   },
   {
@@ -54,6 +56,7 @@ export const events: CoffeeEvent[] = [
     participants: [users[2], users[3]],
     maxParticipants: 4,
     status: "confirmed",
+    locationHidden: true,
     joined: false,
   },
   {
@@ -63,6 +66,7 @@ export const events: CoffeeEvent[] = [
     participants: [users[1]],
     maxParticipants: 3,
     status: "confirmed",
+    locationHidden: true,
     joined: false,
   },
   {
@@ -72,6 +76,7 @@ export const events: CoffeeEvent[] = [
     participants: [users[4], users[5], users[0]],
     maxParticipants: 5,
     status: "confirmed",
+    locationHidden: true,
     joined: false,
   },
 ];
@@ -84,12 +89,12 @@ const REVEAL_BEFORE_MS = HOUR;
 
 export const getRevealTime = (event: CoffeeEvent) => new Date(event.date.getTime() - REVEAL_BEFORE_MS);
 
-/** Mystery cafés stay hidden until shortly before an upcoming meetup. */
+/** Locked cafés stay hidden until shortly before an upcoming meetup. */
 export const isLocationHidden = (event: CoffeeEvent) =>
   !!event.locationHidden && isUpcoming(event) && getRevealTime(event).getTime() > Date.now();
 
 /** Café name to show; the real one only after the reveal. */
-export const getCafeLabel = (event: CoffeeEvent) => (isLocationHidden(event) ? "Mystery café" : event.cafe.name);
+export const getCafeLabel = (event: CoffeeEvent) => (isLocationHidden(event) ? "Café locked" : event.cafe.name);
 
 /** Who is coming stays hidden until the reveal, same as the café. */
 export const formatAttendance = (event: CoffeeEvent) => {

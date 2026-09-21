@@ -7,7 +7,8 @@ import { motion } from "@/theme/tokens";
 import { Text } from "./text";
 
 export type StateViewProps = {
-  emoji: string;
+  /** Omit or pass "" to drop the circle entirely. */
+  emoji?: string;
   title: string;
   description?: string;
   /** Background for the emoji circle. */
@@ -22,9 +23,11 @@ export function StateView({ emoji, title, description, circleClassName, action, 
     <Animated.View
       entering={FadeIn.duration(motion.slow)}
       className={cn("items-center justify-center gap-5 px-8 py-10", className)}>
-      <View className={cn("h-24 w-24 items-center justify-center rounded-full", circleClassName)}>
-        <Text className="text-[44px] leading-[54px]">{emoji}</Text>
-      </View>
+      {emoji ? (
+        <View className={cn("h-24 w-24 items-center justify-center rounded-full", circleClassName)}>
+          <Text className="text-[44px] leading-[54px]">{emoji}</Text>
+        </View>
+      ) : null}
       <View className="max-w-xs items-center gap-1.5">
         <Text variant="title" className="text-center">
           {title}
