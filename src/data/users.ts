@@ -3,7 +3,7 @@ import type { User } from "@/types/koffito";
 export const users: User[] = [
   {
     id: "u1",
-    name: "Maya Lopez",
+    name: "Maya",
     emoji: "🦊",
     age: 27,
     bio: "Flat white fan, amateur film photographer and weekend hiker.",
@@ -23,7 +23,7 @@ export const users: User[] = [
   },
   {
     id: "u2",
-    name: "Sam Carter",
+    name: "Sam",
     emoji: "🐻",
     age: 31,
     bio: "Board games, bad puns and very good espresso.",
@@ -42,7 +42,7 @@ export const users: User[] = [
   },
   {
     id: "u3",
-    name: "Ana Popescu",
+    name: "Ana",
     emoji: "🐱",
     age: 24,
     bio: "Learning my fourth language, one cappuccino at a time.",
@@ -62,7 +62,7 @@ export const users: User[] = [
   },
   {
     id: "u4",
-    name: "Leo Martin",
+    name: "Leo",
     emoji: "🦉",
     age: 29,
     bio: "Home cook looking for people to taste-test with.",
@@ -81,7 +81,7 @@ export const users: User[] = [
   },
   {
     id: "u5",
-    name: "Iris Chen",
+    name: "Iris",
     emoji: "🐼",
     age: 26,
     bio: "Designer by day, ceramics by night.",
@@ -100,7 +100,7 @@ export const users: User[] = [
   },
   {
     id: "u6",
-    name: "Tom Becker",
+    name: "Tom",
     emoji: "🐸",
     age: 34,
     bio: "Runs slowly, talks a lot.",

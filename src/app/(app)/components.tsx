@@ -28,7 +28,7 @@ import type { Match, Meetup, User } from "@/types/koffito";
 
 const maya: User = {
   id: "1",
-  name: "Maya Lopez",
+  name: "Maya",
   age: 27,
   bio: "Latte art enthusiast, weekend hiker and forever looking for the best croissant in town.",
   photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600",
@@ -39,7 +39,7 @@ const maya: User = {
 
 const sam: User = {
   id: "2",
-  name: "Sam Carter",
+  name: "Sam",
   age: 31,
   bio: "Indie games, vinyl records and very strong espresso.",
   interests: ["gaming", "music", "coffee"],
@@ -140,8 +140,8 @@ export default function ComponentsScreen() {
 
         <Section title="Avatars & badges">
           <View className="flex-row items-end gap-3">
-            <Avatar name="Maya Lopez" emoji={maya.emoji} size="xl" status="online" />
-            <Avatar name="Sam Carter" size="lg" status="away" />
+            <Avatar name="Maya" emoji={maya.emoji} size="xl" status="online" />
+            <Avatar name="Sam" size="lg" status="away" />
             <Avatar name="Alex Kim" size="md" status="busy" />
             <Avatar name="Jo" size="sm" badge={<Text>☕</Text>} />
             <Avatar name="Riley" size="xs" />
