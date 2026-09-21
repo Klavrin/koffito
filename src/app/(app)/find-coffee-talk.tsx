@@ -86,29 +86,6 @@ export default function FindCoffeeTalkPage() {
         />
       ) : (
         <View className="gap-6">
-          {selectedEventDetails && (
-            <Card
-              padding="sm"
-              className="flex-row items-center justify-between gap-3 border border-primary"
-            >
-              <View className="flex-1 gap-0.5">
-                <Text variant="label" tone="primary">
-                  Time confirmed
-                </Text>
-                <Text variant="caption" tone="muted">
-                  {formatDate(selectedEventDetails.date)} at{" "}
-                  {formatTime(selectedEventDetails.date)}
-                </Text>
-              </View>
-              <Button
-                title="Cancel"
-                variant="outline"
-                size="sm"
-                onPress={handleCancel}
-              />
-            </Card>
-          )}
-
           <View className="gap-3">
             <View className="gap-1">
               <Text variant="heading">Choose a date</Text>
