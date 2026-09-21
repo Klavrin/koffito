@@ -4,7 +4,7 @@ import type { MeetupStatusType } from "@/types/koffito";
 
 const statusConfig: Record<MeetupStatusType, { label: string; variant: BadgeVariant; icon: IconName }> = {
   pending: { label: "Waiting to hear back", variant: "warning", icon: "hourglass-outline" },
-  confirmed: { label: "It's a date", variant: "success", icon: "checkmark-circle" },
+  confirmed: { label: "Confirmed", variant: "success", icon: "checkmark-circle" },
   completed: { label: "Coffee had", variant: "neutral", icon: "cafe" },
   cancelled: { label: "Cancelled", variant: "error", icon: "close-circle" },
 };

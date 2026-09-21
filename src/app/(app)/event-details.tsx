@@ -14,7 +14,7 @@ import { Screen, Section } from "@/components/layout";
 import { Button, Card, ErrorState, Header, IconButton, Modal, Text, useToast } from "@/components/ui";
 import { useEvents } from "@/context/events";
 import { getCafe, popularTimeLabels } from "@/data/cafes";
-import { getRevealTime, isLocationHidden, isUpcoming } from "@/data/events";
+import { formatAttendance, getRevealTime, isLocationHidden, isUpcoming } from "@/data/events";
 import { formatDateTime } from "@/lib/date";
 import { goBack } from "@/lib/navigation";
 
@@ -51,21 +51,21 @@ export default function EventDetailsPage() {
   const handleRatingSubmit = (value: number) => {
     setRating(value);
     setRateOpen(false);
-    toast.show({ title: "Thanks for the feedback! 💛", variant: "success" });
+    toast.show({ title: "Thanks for the feedback!", variant: "success" });
   };
 
   const handleCancel = () => {
     if (!event) return;
     cancelEvent(event.id);
     setCancelOpen(false);
-    toast.show({ title: "Coffee talk cancelled", message: "Maybe next time ☕", variant: "info" });
+    toast.show({ title: "Coffee talk cancelled", message: "Maybe next time.", variant: "info" });
     goBack();
   };
 
   const handleJoin = () => {
     if (!event) return;
     joinEvent(event.id);
-    toast.show({ title: "You're in! ☕", message: `We saved you a seat at ${cafe.name}`, variant: "success" });
+    toast.show({ title: "You're in!", message: `We saved you a seat at ${cafe.name}`, variant: "success" });
   };
 
   const footer = !event || !upcoming ? undefined : event.joined ? (
@@ -86,12 +86,13 @@ export default function EventDetailsPage() {
       </EventHero>
 
       <View className="gap-6 px-5">
-        {event && <PeopleLikeThis people={event.participants} caption={`${event.participants.length}/${event.maxParticipants} going`} />}
+        {/* Faces and headcount stay hidden until the café is revealed. */}
+        {event && !hidden && <PeopleLikeThis people={event.participants} caption={formatAttendance(event)} />}
 
         <View className="gap-2">
           <View className="flex-row items-start justify-between gap-3">
             <Text variant="title" className="flex-1" accessibilityRole="header">
-              {hidden ? "Surprise café 🤫" : cafe.name}
+              {hidden ? "Mystery café" : cafe.name}
             </Text>
             {event && <MeetupStatus status={event.status} className="mt-1.5" />}
           </View>
@@ -153,7 +154,6 @@ export default function EventDetailsPage() {
       <Modal
         visible={cancelOpen}
         onClose={() => setCancelOpen(false)}
-        emoji="🥺"
         title="Cancel this coffee talk?"
         description="The others will be told you can't make it. You can always join another one."
         primaryAction={{ title: "Yes, cancel it", variant: "destructive", onPress: handleCancel }}

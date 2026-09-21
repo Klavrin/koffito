@@ -84,6 +84,16 @@ const REVEAL_BEFORE_MS = HOUR;
 
 export const getRevealTime = (event: CoffeeEvent) => new Date(event.date.getTime() - REVEAL_BEFORE_MS);
 
-/** Surprise cafés stay hidden until shortly before an upcoming meetup. */
+/** Mystery cafés stay hidden until shortly before an upcoming meetup. */
 export const isLocationHidden = (event: CoffeeEvent) =>
   !!event.locationHidden && isUpcoming(event) && getRevealTime(event).getTime() > Date.now();
+
+/** Café name to show; the real one only after the reveal. */
+export const getCafeLabel = (event: CoffeeEvent) => (isLocationHidden(event) ? "Mystery café" : event.cafe.name);
+
+/** Who is coming stays hidden until the reveal, same as the café. */
+export const formatAttendance = (event: CoffeeEvent) => {
+  if (isLocationHidden(event)) return "Who's coming is a surprise";
+  const count = event.participants.length;
+  return `${count} ${count === 1 ? "person" : "people"} going`;
+};

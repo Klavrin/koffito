@@ -3,7 +3,7 @@ import { View } from "react-native";
 
 import { MeetupStatus } from "@/components/koffito";
 import { AvatarGroup, Card, Text } from "@/components/ui";
-import { isLocationHidden } from "@/data/events";
+import { formatAttendance, getCafeLabel, isLocationHidden } from "@/data/events";
 import { toAvatarPeople } from "@/data/users";
 import { formatDateTime } from "@/lib/date";
 import type { CoffeeEvent } from "@/types/koffito";
@@ -28,12 +28,12 @@ export function EventCard({ event, onPress, animateIn }: EventCardProps) {
           contentFit="cover"
           transition={200}
           blurRadius={hidden ? 40 : 0}
-          accessibilityLabel={hidden ? "Hidden café" : `Photo of ${event.cafe.name}`}
+          accessibilityLabel={hidden ? "Mystery café" : `Photo of ${event.cafe.name}`}
           style={{ width: 92, height: 92, borderRadius: 20 }}
         />
         <View className="flex-1 justify-center gap-1.5">
           <Text variant="heading" numberOfLines={1}>
-            {hidden ? "Surprise café 🤫" : event.cafe.name}
+            {getCafeLabel(event)}
           </Text>
           <InfoRow size="sm" icon="calendar-outline" label={formatDateTime(event.date)} />
           <InfoRow size="sm" icon="location-outline" label={hidden ? "Revealed before the meetup" : event.cafe.address} />
@@ -42,9 +42,10 @@ export function EventCard({ event, onPress, animateIn }: EventCardProps) {
 
       <View className="flex-row items-center justify-between px-1 pb-1">
         <View className="flex-row items-center gap-2">
-          <AvatarGroup people={toAvatarPeople(event.participants)} size="xs" />
+          {/* Faces and headcount stay hidden until the café is revealed. */}
+          {!hidden && <AvatarGroup people={toAvatarPeople(event.participants)} size="xs" />}
           <Text variant="caption" tone="muted">
-            {event.participants.length}/{event.maxParticipants} going
+            {formatAttendance(event)}
           </Text>
         </View>
         <MeetupStatus status={event.status} />
