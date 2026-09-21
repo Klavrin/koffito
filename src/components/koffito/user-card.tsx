@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { Avatar } from "@/components/ui/avatar";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import type { User } from "@/types/koffito";
@@ -32,7 +33,7 @@ export function UserCard({
   if (variant === "compact") {
     return (
       <Card padding="sm" onPress={onPress} animateIn={animateIn} className="flex-row items-center gap-3">
-        <Avatar name={user.name} source={user.photo} size="md" status={status} />
+        <Avatar name={user.name} emoji={user.emoji} size="md" status={status} />
         <View className="flex-1">
           <Text variant="label" numberOfLines={1}>
             {heading}
@@ -54,15 +55,18 @@ export function UserCard({
   return (
     <Card onPress={onPress} animateIn={animateIn} className="gap-4">
       <View className="flex-row items-center gap-4">
-        <Avatar name={user.name} source={user.photo} size="lg" status={status} />
+        <Avatar name={user.name} emoji={user.emoji} size="lg" status={status} />
         <View className="flex-1 gap-0.5">
           <Text variant="heading" numberOfLines={1}>
             {heading}
           </Text>
           {user.location && (
-            <Text variant="caption" tone="muted" numberOfLines={1}>
-              📍 {user.location}
-            </Text>
+            <View className="flex-row items-center gap-1">
+              <Icon name="location-outline" size={13} color="muted" />
+              <Text variant="caption" tone="muted" numberOfLines={1}>
+                {user.location}
+              </Text>
+            </View>
           )}
         </View>
       </View>

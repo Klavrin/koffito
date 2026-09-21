@@ -20,7 +20,7 @@ export function PeopleRow({ people, onSelect, onDiscoverMore }: PeopleRowProps) 
           accessibilityLabel={`View ${person.name}`}
           onPress={() => onSelect(person)}
           className="w-[72px] items-center gap-2">
-          <Avatar name={person.name} source={person.photo} size="lg" status={person.isOnline ? "online" : undefined} />
+          <Avatar name={person.name} emoji={person.emoji} size="lg" status={person.isOnline ? "online" : undefined} />
           <Text variant="caption" numberOfLines={1}>
             {person.name.split(" ")[0]}
           </Text>

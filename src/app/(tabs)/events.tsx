@@ -4,15 +4,15 @@ import { View } from "react-native";
 
 import { EventCard } from "@/components/events/event-card";
 import { Screen } from "@/components/layout";
-import { Button, Chip, EmptyState, Header, IconButton } from "@/components/ui";
+import { Chip, EmptyState, Header } from "@/components/ui";
 import { useEvents } from "@/context/events";
 import { isUpcoming } from "@/data/events";
 
 type Filter = "upcoming" | "past";
 
-const filters: { key: Filter; label: string; emoji: string }[] = [
-  { key: "upcoming", label: "Upcoming", emoji: "☕" },
-  { key: "past", label: "Past", emoji: "📖" },
+const filters: { key: Filter; label: string }[] = [
+  { key: "upcoming", label: "Upcoming" },
+  { key: "past", label: "Past" },
 ];
 
 export default function EventsPage() {
@@ -32,19 +32,18 @@ export default function EventsPage() {
           size="large"
           title="Events"
           subtitle="Your coffee talks, all in one place"
-          right={<IconButton icon="add" variant="primary" accessibilityLabel="Create new event" onPress={() => router.push("/create-event")} />}
         />
       }
       contentClassName="gap-4">
       <View className="flex-row gap-2">
         {filters.map((item) => (
-          <Chip key={item.key} label={item.label} emoji={item.emoji} selected={filter === item.key} onPress={() => setFilter(item.key)} />
+          <Chip key={item.key} label={item.label} selected={filter === item.key} onPress={() => setFilter(item.key)} />
         ))}
       </View>
 
       {visible.length === 0 ? (
         <EmptyState
-          emoji={filter === "upcoming" ? "☕" : "📖"}
+          emoji=""
           title={filter === "upcoming" ? "No coffee talks planned" : "No past coffee talks yet"}
           description={filter === "upcoming" ? "There's always someone new to meet." : "Your coffee stories will show up here."}
           action={{ title: "Find coffee talk", leftIcon: "search", onPress: () => router.push("/find-coffee-talk") }}
@@ -60,13 +59,6 @@ export default function EventsPage() {
               onPress={() => router.push({ pathname: "/event-details", params: { id: event.id } })}
             />
           ))}
-          <Button
-            title="Create new event"
-            variant="secondary"
-            leftIcon="add-circle-outline"
-            fullWidth
-            onPress={() => router.push("/create-event")}
-          />
         </>
       )}
     </Screen>

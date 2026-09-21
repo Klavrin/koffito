@@ -57,6 +57,7 @@ const groups: {
         label: "report",
         href: { pathname: "/report", params: { eventId: "e1" } },
       },
+      { label: "person", href: { pathname: "/person", params: { id: "u1" } } },
       { label: "settings", href: "/settings" },
       { label: "survey-profile-settings", href: "/survey-profile-settings" },
       { label: "admin", href: "/admin" },
