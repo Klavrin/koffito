@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { Avatar } from "@/components/ui/avatar";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import type { User } from "@/types/koffito";
@@ -60,9 +61,12 @@ export function UserCard({
             {heading}
           </Text>
           {user.location && (
-            <Text variant="caption" tone="muted" numberOfLines={1}>
-              📍 {user.location}
-            </Text>
+            <View className="flex-row items-center gap-1">
+              <Icon name="location-outline" size={13} color="muted" />
+              <Text variant="caption" tone="muted" numberOfLines={1}>
+                {user.location}
+              </Text>
+            </View>
           )}
         </View>
       </View>

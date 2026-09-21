@@ -5,16 +5,16 @@ import { Linking, View } from "react-native";
 import { EventHero } from "@/components/events/event-hero";
 import { InfoRow } from "@/components/events/info-row";
 import { LocationCountdown } from "@/components/events/location-countdown";
-import { PeopleLikeThis } from "@/components/events/people-like-this";
+import { PeopleGoing } from "@/components/events/people-going";
 import { PopularTimesChart } from "@/components/events/popular-times-chart";
 import { RateExperienceSheet } from "@/components/events/rate-experience-sheet";
 import { RatingStars } from "@/components/events/rating-stars";
-import { MeetupStatus } from "@/components/koffito";
+import { MeetupStatus, UserCard } from "@/components/koffito";
 import { Screen, Section } from "@/components/layout";
-import { Button, Card, ErrorState, Header, IconButton, Modal, Text, useToast } from "@/components/ui";
+import { BottomSheet, Button, Card, ErrorState, Header, IconButton, Modal, Text, useToast } from "@/components/ui";
 import { useEvents } from "@/context/events";
 import { getCafe, popularTimeLabels } from "@/data/cafes";
-import { formatAttendance, getRevealTime, isLocationHidden, isUpcoming } from "@/data/events";
+import { getRevealTime, isLocationHidden, isUpcoming } from "@/data/events";
 import { formatDateTime } from "@/lib/date";
 import { goBack } from "@/lib/navigation";
 
@@ -27,6 +27,7 @@ export default function EventDetailsPage() {
   const [rating, setRating] = useState(0);
   const [rateOpen, setRateOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [peopleOpen, setPeopleOpen] = useState(false);
 
   const event = getEvent(id);
   const cafe = event?.cafe ?? getCafe(cafeId);
@@ -87,7 +88,7 @@ export default function EventDetailsPage() {
 
       <View className="gap-6 px-5">
         {/* Faces and headcount stay hidden until the café is revealed. */}
-        {event && !hidden && <PeopleLikeThis people={event.participants} caption={formatAttendance(event)} />}
+        {event && !hidden && <PeopleGoing people={event.participants} onPress={() => setPeopleOpen(true)} />}
 
         <View className="gap-2">
           <View className="flex-row items-start justify-between gap-3">
@@ -98,7 +99,7 @@ export default function EventDetailsPage() {
           </View>
           <Text tone="muted">
             {hidden
-              ? "The café stays a secret until an hour before you meet. All you need to know: the coffee is good and the company is better."
+              ? "The café stays a secret until a day before you meet. All you need to know: the coffee is good and the company is better."
               : cafe.description}
           </Text>
         </View>
@@ -106,11 +107,7 @@ export default function EventDetailsPage() {
         <Card className="gap-3">
           {event && <InfoRow icon="calendar-outline" label={formatDateTime(event.date)} />}
           {hidden ? (
-            <>
-              <InfoRow icon="lock-closed-outline" label="Location hidden until the reveal" />
-              <InfoRow icon="lock-closed-outline" label="Website hidden until the reveal" />
-              <InfoRow icon="lock-closed-outline" label="Phone hidden until the reveal" />
-            </>
+            <InfoRow icon="lock-closed-outline" label="Location hidden until the reveal" />
           ) : (
             <>
               <InfoRow icon="location-outline" label={cafe.address} />
@@ -150,6 +147,26 @@ export default function EventDetailsPage() {
         onSubmit={handleRatingSubmit}
         onReport={openReport}
       />
+
+      <BottomSheet
+        visible={peopleOpen}
+        onClose={() => setPeopleOpen(false)}
+        title="Who's going"
+        description="Tap someone to see their profile.">
+        <View className="gap-2 pb-4">
+          {event?.participants.map((person) => (
+            <UserCard
+              key={person.id}
+              user={person}
+              variant="compact"
+              onPress={() => {
+                setPeopleOpen(false);
+                router.push({ pathname: "/person", params: { id: person.id } });
+              }}
+            />
+          ))}
+        </View>
+      </BottomSheet>
 
       <Modal
         visible={cancelOpen}

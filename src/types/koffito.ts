@@ -12,6 +12,11 @@ export type User = {
   /** Emoji avatar; Koffito shows emojis rather than real photos of people. */
   emoji?: string;
   photo?: ImageSource | string | null;
+  /** The same details the profile setup collects, so a profile renders in full. */
+  gender?: string;
+  occupation?: string;
+  favoriteCoffee?: string;
+  survey?: SurveyAnswers;
   interests: Interest[];
   location?: string;
   isOnline?: boolean;

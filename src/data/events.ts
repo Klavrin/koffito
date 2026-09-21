@@ -104,6 +104,19 @@ export const isLocationHidden = (event: CoffeeEvent) =>
 /** Café name to show; the real one only after the reveal. */
 export const getCafeLabel = (event: CoffeeEvent) => (isLocationHidden(event) ? "Café locked" : event.cafe.name);
 
+/** Coffee talks a person has actually had, with the cafés and people they met. */
+export const getPersonStats = (events: CoffeeEvent[], userId: string) => {
+  const attended = events.filter(
+    (event) => event.status === "completed" && event.participants.some((person) => person.id === userId),
+  );
+  const cafes = new Set(attended.map((event) => event.cafe.id));
+  const met = new Set(
+    attended.flatMap((event) => event.participants.map((person) => person.id)).filter((id) => id !== userId),
+  );
+
+  return { coffeeTalks: attended.length, cafesVisited: cafes.size, peopleMet: met.size };
+};
+
 /** Who is coming stays hidden until the reveal, same as the café. */
 export const formatAttendance = (event: CoffeeEvent) => {
   if (isLocationHidden(event)) return "Who's coming is a surprise";
