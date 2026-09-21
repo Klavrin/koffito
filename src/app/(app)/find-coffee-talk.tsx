@@ -1,3 +1,9 @@
+import { Image } from "expo-image";
+import { useState } from "react";
+import { View } from "react-native";
+
+import { AvailabilityCalendar } from "@/components/home/availability-calendar";
+import { Screen } from "@/components/layout";
 import {
   Button,
   Card,
@@ -7,12 +13,6 @@ import {
   Text,
   useToast,
 } from "@/components/ui";
-import { Image } from "expo-image";
-import { useState } from "react";
-import { View } from "react-native";
-
-import { AvailabilityCalendar } from "@/components/home/availability-calendar";
-import { Screen } from "@/components/layout";
 import { useEvents } from "@/context/events";
 import { isUpcoming } from "@/data/events";
 import { dayKey, formatDate, formatTime } from "@/lib/date";
@@ -22,14 +22,11 @@ export default function FindCoffeeTalkPage() {
   const { events, joinEvent, leaveEvent } = useEvents();
   const toast = useToast();
   const [selectedDay, setSelectedDay] = useState<string>();
-  const [selectedEvent, setSelectedEvent] = useState<string>();
 
   const available = events
-    .filter(
-      (event) =>
-        (!event.joined || event.id === selectedEvent) && isUpcoming(event),
-    )
+    .filter(isUpcoming)
     .sort((a, b) => a.date.getTime() - b.date.getTime());
+  const joinedCount = available.filter((event) => event.joined).length;
   const availableDays = [
     ...new Set(available.map((event) => dayKey(event.date))),
   ];
@@ -37,12 +34,8 @@ export default function FindCoffeeTalkPage() {
     ? available.filter((event) => dayKey(event.date) === selectedDay)
     : available;
 
-  const handleSelect = (eventId: string) => {
-    if (selectedEvent && selectedEvent !== eventId) {
-      leaveEvent(selectedEvent);
-    }
+  const handleJoin = (eventId: string) => {
     joinEvent(eventId);
-    setSelectedEvent(eventId);
     toast.show({
       title: "Event joined",
       message:
@@ -51,20 +44,14 @@ export default function FindCoffeeTalkPage() {
     });
   };
 
-  const handleCancel = () => {
-    if (!selectedEvent) return;
-    leaveEvent(selectedEvent);
-    setSelectedEvent(undefined);
+  const handleCancel = (eventId: string) => {
+    leaveEvent(eventId);
     toast.show({
-      title: "Coffee talk cancelled",
-      message: "You can choose another time whenever you are ready.",
+      title: "Event cancelled",
+      message: "You can join another time whenever you are ready.",
       variant: "info",
     });
   };
-
-  const selectedEventDetails = selectedEvent
-    ? events.find((event) => event.id === selectedEvent)
-    : undefined;
 
   return (
     <Screen
@@ -86,6 +73,15 @@ export default function FindCoffeeTalkPage() {
         />
       ) : (
         <View className="gap-6">
+          {joinedCount > 0 && (
+            <Card padding="sm" className="border border-primary">
+              <Text variant="label" tone="primary">
+                You've joined {joinedCount} coffee talk
+                {joinedCount === 1 ? "" : "s"}
+              </Text>
+            </Card>
+          )}
+
           <View className="gap-3">
             <View className="gap-1">
               <Text variant="heading">Choose a date</Text>
@@ -127,13 +123,13 @@ export default function FindCoffeeTalkPage() {
               </Card>
             ) : (
               visibleEvents.map((event, index) => {
-                const selected = selectedEvent === event.id;
+                const joined = event.joined;
 
                 return (
                   <Card
                     key={event.id}
                     animateIn={index}
-                    className={selected ? "border border-primary" : undefined}
+                    className={joined ? "border border-primary" : undefined}
                   >
                     <View className="gap-4">
                       <View className="h-32 overflow-hidden rounded-2xl">
@@ -156,6 +152,7 @@ export default function FindCoffeeTalkPage() {
                           </View>
                         </View>
                       </View>
+
                       <View className="flex-row items-center justify-between gap-3">
                         <View className="flex-1 gap-1">
                           <Text variant="heading">
@@ -169,12 +166,13 @@ export default function FindCoffeeTalkPage() {
                           </Text>
                         </View>
                       </View>
+
                       <Button
-                        title={selected ? "Cancel event" : "Join event"}
-                        variant={selected ? "outline" : "primary"}
+                        title={joined ? "Cancel event" : "Join event"}
+                        variant={joined ? "outline" : "primary"}
                         fullWidth
-                        onPress={
-                          selected ? handleCancel : () => handleSelect(event.id)
+                        onPress={() =>
+                          joined ? handleCancel(event.id) : handleJoin(event.id)
                         }
                       />
                     </View>
