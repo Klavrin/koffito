@@ -1,4 +1,11 @@
 import { Pressable, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { cn } from "@/lib/cn";
@@ -8,6 +15,7 @@ import { Text } from "./text";
 
 export type TabBarItem = {
   key: string;
+  /** Used for accessibility; tabs are icon-only. */
   label: string;
   icon: IconName;
   activeIcon?: IconName;
@@ -24,7 +32,7 @@ export type TabBarProps = {
   className?: string;
 };
 
-/** Floating pill tab bar. The active tab expands into a warm pill with its label. */
+/** Floating pill tab bar. Icon-only; the pressed icon pops. */
 export function TabBar({ items, activeKey, onChange, safeArea = true, className }: TabBarProps) {
   const { shadows } = useKoffitoTheme();
   const insets = useSafeAreaInsets();
@@ -35,41 +43,50 @@ export function TabBar({ items, activeKey, onChange, safeArea = true, className 
         accessibilityRole="tablist"
         style={{ boxShadow: shadows.raised }}
         className="flex-row items-center justify-between rounded-full bg-surface p-2">
-        {items.map((item) => {
-          const active = item.key === activeKey;
-
-          return (
-            <Pressable
-              key={item.key}
-              accessibilityRole="tab"
-              accessibilityLabel={item.label}
-              accessibilityState={{ selected: active }}
-              onPress={() => onChange(item.key)}
-              className={cn(!active && "flex-1 items-center")}>
-              <View
-                className={cn(
-                  "h-12 flex-row items-center justify-center gap-2 rounded-full",
-                  active ? "bg-primary px-5" : "w-12",
-                )}>
-                <View>
-                  <Icon
-                    name={active ? (item.activeIcon ?? item.icon) : item.icon}
-                    size={22}
-                    color={active ? "on-primary" : "muted"}
-                  />
-                  {item.badge ? <TabBadge value={item.badge} /> : null}
-                </View>
-                {active && (
-                  <Text variant="label" tone="on-primary" numberOfLines={1}>
-                    {item.label}
-                  </Text>
-                )}
-              </View>
-            </Pressable>
-          );
-        })}
+        {items.map((item) => (
+          <TabBarButton
+            key={item.key}
+            item={item}
+            active={item.key === activeKey}
+            onPress={() => onChange(item.key)}
+          />
+        ))}
       </View>
     </View>
+  );
+}
+
+function TabBarButton({ item, active, onPress }: { item: TabBarItem; active: boolean; onPress: () => void }) {
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  // Icon grows, then springs back to its original size.
+  const handlePress = () => {
+    scale.value = withSequence(
+      withTiming(1.25, { duration: motion.fast / 2 }),
+      withSpring(1, motion.spring),
+    );
+    onPress();
+  };
+
+  return (
+    <Pressable
+      accessibilityRole="tab"
+      accessibilityLabel={item.label}
+      accessibilityState={{ selected: active }}
+      onPress={handlePress}
+      className="flex-1 items-center">
+      <View className={cn("h-12 w-12 items-center justify-center rounded-full", active && "bg-primary")}>
+        <Animated.View style={animatedStyle}>
+          <Icon
+            name={active ? (item.activeIcon ?? item.icon) : item.icon}
+            size={22}
+            color={active ? "on-primary" : "muted"}
+          />
+          {item.badge ? <TabBadge value={item.badge} /> : null}
+        </Animated.View>
+      </View>
+    </Pressable>
   );
 }
 
