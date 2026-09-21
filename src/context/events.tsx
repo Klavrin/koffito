@@ -1,15 +1,26 @@
-import { createContext, type PropsWithChildren, useContext, useState } from "react";
+import {
+  createContext,
+  type PropsWithChildren,
+  useContext,
+  useState,
+} from "react";
 
 import { events as initialEvents } from "@/data/events";
 import type { Cafe, CoffeeEvent } from "@/types/koffito";
 
-type NewEvent = { cafe: Cafe; date: Date; maxParticipants: number; locationHidden?: boolean };
+type NewEvent = {
+  cafe: Cafe;
+  date: Date;
+  maxParticipants: number;
+  locationHidden?: boolean;
+};
 
 type EventsContextValue = {
   events: CoffeeEvent[];
   getEvent: (id?: string) => CoffeeEvent | undefined;
   createEvent: (event: NewEvent) => CoffeeEvent;
   joinEvent: (id: string) => void;
+  leaveEvent: (id: string) => void;
   cancelEvent: (id: string) => void;
 };
 
@@ -25,15 +36,36 @@ export function EventsProvider({ children }: PropsWithChildren) {
         events,
         getEvent: (id) => events.find((event) => event.id === id),
         createEvent: (details) => {
-          const event: CoffeeEvent = { id: `e${Date.now()}`, participants: [], status: "confirmed", joined: true, ...details };
+          const event: CoffeeEvent = {
+            id: `e${Date.now()}`,
+            participants: [],
+            status: "confirmed",
+            joined: true,
+            ...details,
+          };
           setEvents((current) => [event, ...current]);
           return event;
         },
         joinEvent: (id) =>
-          setEvents((current) => current.map((event) => (event.id === id ? { ...event, joined: true } : event))),
+          setEvents((current) =>
+            current.map((event) =>
+              event.id === id ? { ...event, joined: true } : event,
+            ),
+          ),
+        leaveEvent: (id) =>
+          setEvents((current) =>
+            current.map((event) =>
+              event.id === id ? { ...event, joined: false } : event,
+            ),
+          ),
         cancelEvent: (id) =>
-          setEvents((current) => current.map((event) => (event.id === id ? { ...event, status: "cancelled" } : event))),
-      }}>
+          setEvents((current) =>
+            current.map((event) =>
+              event.id === id ? { ...event, status: "cancelled" } : event,
+            ),
+          ),
+      }}
+    >
       {children}
     </EventsContext.Provider>
   );
