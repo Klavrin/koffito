@@ -58,9 +58,11 @@ export const events: CoffeeEvent[] = [
     joined: true,
   },
   {
+    // Later today, so its reveal window has already passed: use this one to
+    // check the revealed layout (address, website) without waiting.
     id: "e5",
     cafe: cafes[4],
-    date: atHour(1, 19),
+    date: atHour(0, 20),
     participants: [users[2], users[3]],
     maxParticipants: 4,
     status: "confirmed",
