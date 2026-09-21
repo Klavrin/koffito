@@ -1,3 +1,4 @@
+import { Image } from "expo-image";
 import { useState } from "react";
 import { View } from "react-native";
 
@@ -8,6 +9,7 @@ import {
   Card,
   EmptyState,
   Header,
+  Icon,
   Text,
   useToast,
 } from "@/components/ui";
@@ -20,14 +22,11 @@ export default function FindCoffeeTalkPage() {
   const { events, joinEvent, leaveEvent } = useEvents();
   const toast = useToast();
   const [selectedDay, setSelectedDay] = useState<string>();
-  const [selectedEvent, setSelectedEvent] = useState<string>();
 
   const available = events
-    .filter(
-      (event) =>
-        (!event.joined || event.id === selectedEvent) && isUpcoming(event),
-    )
+    .filter(isUpcoming)
     .sort((a, b) => a.date.getTime() - b.date.getTime());
+  const joinedCount = available.filter((event) => event.joined).length;
   const availableDays = [
     ...new Set(available.map((event) => dayKey(event.date))),
   ];
@@ -35,31 +34,24 @@ export default function FindCoffeeTalkPage() {
     ? available.filter((event) => dayKey(event.date) === selectedDay)
     : available;
 
-  const handleSelect = (eventId: string) => {
+  const handleJoin = (eventId: string) => {
     joinEvent(eventId);
-    setSelectedEvent(eventId);
     toast.show({
-      title: "Coffee talk confirmed",
+      title: "Event joined",
       message:
-        "Your time is saved. The café and guests will be revealed closer to the meetup.",
+        "Your spot is saved. The café and guests will be revealed closer to the meetup.",
       variant: "success",
     });
   };
 
-  const handleCancel = () => {
-    if (!selectedEvent) return;
-    leaveEvent(selectedEvent);
-    setSelectedEvent(undefined);
+  const handleCancel = (eventId: string) => {
+    leaveEvent(eventId);
     toast.show({
-      title: "Coffee talk cancelled",
-      message: "You can choose another time whenever you are ready.",
+      title: "Event cancelled",
+      message: "You can join another time whenever you are ready.",
       variant: "info",
     });
   };
-
-  const selectedEventDetails = selectedEvent
-    ? events.find((event) => event.id === selectedEvent)
-    : undefined;
 
   return (
     <Screen
@@ -81,26 +73,12 @@ export default function FindCoffeeTalkPage() {
         />
       ) : (
         <View className="gap-6">
-          {selectedEventDetails && (
-            <Card
-              padding="sm"
-              className="flex-row items-center justify-between gap-3 border border-primary"
-            >
-              <View className="flex-1 gap-0.5">
-                <Text variant="label" tone="primary">
-                  Time confirmed
-                </Text>
-                <Text variant="caption" tone="muted">
-                  {formatDate(selectedEventDetails.date)} at{" "}
-                  {formatTime(selectedEventDetails.date)}
-                </Text>
-              </View>
-              <Button
-                title="Cancel"
-                variant="outline"
-                size="sm"
-                onPress={handleCancel}
-              />
+          {joinedCount > 0 && (
+            <Card padding="sm" className="border border-primary">
+              <Text variant="label" tone="primary">
+                You've joined {joinedCount} coffee talk
+                {joinedCount === 1 ? "" : "s"}
+              </Text>
             </Card>
           )}
 
@@ -145,34 +123,57 @@ export default function FindCoffeeTalkPage() {
               </Card>
             ) : (
               visibleEvents.map((event, index) => {
-                const selected = selectedEvent === event.id;
+                const joined = event.joined;
 
                 return (
                   <Card
                     key={event.id}
                     animateIn={index}
-                    className={selected ? "border border-primary" : undefined}
+                    className={joined ? "border border-primary" : undefined}
                   >
                     <View className="gap-4">
+                      <View className="h-32 overflow-hidden rounded-2xl">
+                        <Image
+                          source={event.cafe.photo}
+                          contentFit="cover"
+                          blurRadius={25}
+                          transition={200}
+                          accessibilityLabel="Blurred photo of the mystery café"
+                          style={{ width: "100%", height: "100%" }}
+                        />
+                        <View className="absolute inset-0 items-center justify-center bg-black/20">
+                          <View className="flex-row items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5">
+                            <Icon
+                              name="lock-closed"
+                              size={14}
+                              color="primary"
+                            />
+                            <Text variant="caption">Revealed 24h before</Text>
+                          </View>
+                        </View>
+                      </View>
+
                       <View className="flex-row items-center justify-between gap-3">
                         <View className="flex-1 gap-1">
                           <Text variant="heading">
                             {formatDate(event.date)}
                           </Text>
-                          <Text variant="body" tone="muted">
-                            {formatTime(event.date)}
+                        </View>
+                        <View className="items-end gap-0.5">
+                          <Text variant="label">{formatTime(event.date)}</Text>
+                          <Text variant="caption" tone="muted">
+                            Location locked
                           </Text>
                         </View>
-                        <Text variant="caption" tone="muted">
-                          Details locked
-                        </Text>
                       </View>
+
                       <Button
-                        title={selected ? "Time selected" : "Choose this time"}
-                        variant={selected ? "secondary" : "primary"}
+                        title={joined ? "Cancel event" : "Join event"}
+                        variant={joined ? "outline" : "primary"}
                         fullWidth
-                        disabled={selected}
-                        onPress={() => handleSelect(event.id)}
+                        onPress={() =>
+                          joined ? handleCancel(event.id) : handleJoin(event.id)
+                        }
                       />
                     </View>
                   </Card>
