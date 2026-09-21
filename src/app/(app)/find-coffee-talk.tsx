@@ -1,16 +1,18 @@
-import { useState } from "react";
-import { View } from "react-native";
-
-import { AvailabilityCalendar } from "@/components/home/availability-calendar";
-import { Screen } from "@/components/layout";
 import {
   Button,
   Card,
   EmptyState,
   Header,
+  Icon,
   Text,
   useToast,
 } from "@/components/ui";
+import { Image } from "expo-image";
+import { useState } from "react";
+import { View } from "react-native";
+
+import { AvailabilityCalendar } from "@/components/home/availability-calendar";
+import { Screen } from "@/components/layout";
 import { useEvents } from "@/context/events";
 import { isUpcoming } from "@/data/events";
 import { dayKey, formatDate, formatTime } from "@/lib/date";
@@ -36,12 +38,15 @@ export default function FindCoffeeTalkPage() {
     : available;
 
   const handleSelect = (eventId: string) => {
+    if (selectedEvent && selectedEvent !== eventId) {
+      leaveEvent(selectedEvent);
+    }
     joinEvent(eventId);
     setSelectedEvent(eventId);
     toast.show({
-      title: "Coffee talk confirmed",
+      title: "Event joined",
       message:
-        "Your time is saved. The café and guests will be revealed closer to the meetup.",
+        "Your spot is saved. The café and guests will be revealed closer to the meetup.",
       variant: "success",
     });
   };
@@ -154,25 +159,46 @@ export default function FindCoffeeTalkPage() {
                     className={selected ? "border border-primary" : undefined}
                   >
                     <View className="gap-4">
+                      <View className="h-32 overflow-hidden rounded-2xl">
+                        <Image
+                          source={event.cafe.photo}
+                          contentFit="cover"
+                          blurRadius={25}
+                          transition={200}
+                          accessibilityLabel="Blurred photo of the mystery café"
+                          style={{ width: "100%", height: "100%" }}
+                        />
+                        <View className="absolute inset-0 items-center justify-center bg-black/20">
+                          <View className="flex-row items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5">
+                            <Icon
+                              name="lock-closed"
+                              size={14}
+                              color="primary"
+                            />
+                            <Text variant="caption">Revealed 24h before</Text>
+                          </View>
+                        </View>
+                      </View>
                       <View className="flex-row items-center justify-between gap-3">
                         <View className="flex-1 gap-1">
                           <Text variant="heading">
                             {formatDate(event.date)}
                           </Text>
-                          <Text variant="body" tone="muted">
-                            {formatTime(event.date)}
+                        </View>
+                        <View className="items-end gap-0.5">
+                          <Text variant="label">{formatTime(event.date)}</Text>
+                          <Text variant="caption" tone="muted">
+                            Location locked
                           </Text>
                         </View>
-                        <Text variant="caption" tone="muted">
-                          Details locked
-                        </Text>
                       </View>
                       <Button
-                        title={selected ? "Time selected" : "Choose this time"}
-                        variant={selected ? "secondary" : "primary"}
+                        title={selected ? "Cancel event" : "Join event"}
+                        variant={selected ? "outline" : "primary"}
                         fullWidth
-                        disabled={selected}
-                        onPress={() => handleSelect(event.id)}
+                        onPress={
+                          selected ? handleCancel : () => handleSelect(event.id)
+                        }
                       />
                     </View>
                   </Card>
