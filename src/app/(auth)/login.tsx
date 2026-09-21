@@ -7,11 +7,13 @@ import { AuthHero } from "@/components/auth/auth-hero";
 import { AuthSwitchLink } from "@/components/auth/auth-switch-link";
 import { Screen } from "@/components/layout";
 import { Button, Header, Input } from "@/components/ui";
+import { useToast } from "@/components/ui/toast";
 import { useSession } from "@/context/session";
-import { isValid, validateRequired } from "@/lib/validation";
+import { isValid, validateEmail, validateRequired } from "@/lib/validation";
 
 export default function LoginPage() {
   const { signIn } = useSession();
+  const toast = useToast();
   const passwordRef = useRef<TextInput>(null);
 
   const [identifier, setIdentifier] = useState("");
@@ -20,17 +22,27 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const errors = {
-    identifier: validateRequired(identifier, "Enter your username or email"),
+    identifier: validateEmail(identifier),
     password: validateRequired(password, "Enter your password"),
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setSubmitted(true);
     if (!isValid(errors)) return;
 
     setLoading(true);
-    // Stand-in for the real request; the session guard swaps to the signed-in stack.
-    setTimeout(() => signIn(), 600);
+    try {
+      const { error } = await signIn(identifier, password);
+      if (error) {
+        toast.show({
+          title: "Could not log in",
+          message: error.message,
+          variant: "error",
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -41,7 +53,7 @@ export default function LoginPage() {
 
       <View className="gap-4">
         <Input
-          label="Username or email"
+          label="Email"
           placeholder="you@example.com"
           leftIcon="person-outline"
           autoCapitalize="none"

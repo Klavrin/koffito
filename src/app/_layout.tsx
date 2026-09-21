@@ -49,7 +49,9 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { session } = useSession();
+  const { session, isLoading } = useSession();
+
+  if (isLoading) return null;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
