@@ -34,16 +34,26 @@ export type TabBarProps = {
 };
 
 /** Floating pill tab bar. Icon-only; the pressed icon pops. */
-export function TabBar({ items, activeKey, onChange, safeArea = true, className }: TabBarProps) {
+export function TabBar({
+  items,
+  activeKey,
+  onChange,
+  safeArea = true,
+  className,
+}: TabBarProps) {
   const { shadows } = useKoffitoTheme();
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={{ paddingBottom: safeArea ? Math.max(insets.bottom, 12) : 0 }} className={cn("px-5", className)}>
+    <View
+      style={{ paddingBottom: safeArea ? Math.max(insets.bottom, 14) : 0 }}
+      className={cn("px-5 pt-5", className)}
+    >
       <View
         accessibilityRole="tablist"
         style={{ boxShadow: shadows.raised }}
-        className="flex-row items-center justify-between rounded-full bg-surface p-2">
+        className="flex-row items-center justify-between gap-4 rounded-full bg-surface p-2"
+      >
         {items.map((item) => (
           <TabBarButton
             key={item.key}
@@ -57,9 +67,19 @@ export function TabBar({ items, activeKey, onChange, safeArea = true, className 
   );
 }
 
-function TabBarButton({ item, active, onPress }: { item: TabBarItem; active: boolean; onPress: () => void }) {
+function TabBarButton({
+  item,
+  active,
+  onPress,
+}: {
+  item: TabBarItem;
+  active: boolean;
+  onPress: () => void;
+}) {
   const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   // Icon grows, then springs back to its original size.
   const handlePress = () => {
@@ -76,8 +96,14 @@ function TabBarButton({ item, active, onPress }: { item: TabBarItem; active: boo
       accessibilityLabel={item.label}
       accessibilityState={{ selected: active }}
       onPress={handlePress}
-      className="flex-1 items-center">
-      <View className={cn("h-12 w-12 items-center justify-center rounded-full", active && "bg-primary")}>
+      className="flex-1 items-center"
+    >
+      <View
+        className={cn(
+          "h-12 w-12 items-center justify-center rounded-full",
+          active && "bg-primary",
+        )}
+      >
         <Animated.View style={animatedStyle}>
           <Icon
             name={active ? (item.activeIcon ?? item.icon) : item.icon}
@@ -93,7 +119,9 @@ function TabBarButton({ item, active, onPress }: { item: TabBarItem; active: boo
 
 function TabBadge({ value }: { value: number | boolean }) {
   if (value === true) {
-    return <View className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface bg-accent" />;
+    return (
+      <View className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface bg-accent" />
+    );
   }
 
   return (
