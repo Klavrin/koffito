@@ -67,12 +67,13 @@ const groups: {
 ];
 
 export default function DevMenuPage() {
-  const { signIn } = useSession();
+  const { session } = useSession();
 
   const open = (link: Link, guard: "none" | "new" | "returning") => {
-    if (guard === "new")
-      signIn({ firstName: "Tester", email: "tester@koffito.app" });
-    if (guard === "returning") signIn();
+    if (guard !== "none" && !session) {
+      router.push("/login");
+      return;
+    }
     router.push(link.href);
   };
 

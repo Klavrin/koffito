@@ -6,6 +6,7 @@ import { AuthHero } from "@/components/auth/auth-hero";
 import { AuthSwitchLink } from "@/components/auth/auth-switch-link";
 import { Screen } from "@/components/layout";
 import { Button, Header, Input } from "@/components/ui";
+import { useToast } from "@/components/ui/toast";
 import { useSession } from "@/context/session";
 import {
   isValid,
@@ -16,7 +17,8 @@ import {
 } from "@/lib/validation";
 
 export default function RegisterPage() {
-  const { signIn } = useSession();
+  const { signUp } = useSession();
+  const toast = useToast();
 
   const [form, setForm] = useState({
     name: "",
@@ -39,20 +41,39 @@ export default function RegisterPage() {
   const showError = (field: keyof typeof errors) =>
     submitted ? errors[field] : undefined;
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     setSubmitted(true);
     if (!isValid(errors)) return;
 
     setLoading(true);
-    // Stand-in for the real request. New profiles are not onboarded, so Home sends them to the survey.
-    setTimeout(
-      () =>
-        signIn({
-          firstName: form.name.trim(),
-          email: form.email.trim(),
-        }),
-      600,
-    );
+    try {
+      const { error, needsEmailConfirmation } = await signUp(
+        form.email,
+        form.password,
+        form.name,
+      );
+
+      if (error) {
+        toast.show({
+          title: "Could not create account",
+          message: error.message,
+          variant: "error",
+        });
+        return;
+      }
+
+      if (needsEmailConfirmation) {
+        toast.show({
+          title: "Check your inbox",
+          message: "Confirm your email, then log in to continue.",
+          variant: "success",
+          duration: 5000,
+        });
+        router.replace("/login");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
