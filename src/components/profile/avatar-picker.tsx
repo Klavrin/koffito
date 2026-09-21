@@ -24,14 +24,11 @@ export function AvatarPicker({ value, onChange, label = "Choose avatar" }: Avata
   };
 
   return (
-    <View className="items-center gap-3">
+    <View className="flex-row items-center justify-center gap-4">
       <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => setOpen(true)}>
         <EmojiAvatar emoji={value} size="xl" />
       </Pressable>
-      {/* Button aligns itself to the start, so center it with a row. */}
-      <View className="flex-row justify-center">
-        <Button title={label} variant="secondary" size="sm" leftIcon="happy-outline" onPress={() => setOpen(true)} />
-      </View>
+      <Button title={label} variant="secondary" size="sm" leftIcon="happy-outline" onPress={() => setOpen(true)} />
 
       <BottomSheet
         visible={open}

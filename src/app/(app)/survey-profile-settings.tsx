@@ -5,8 +5,9 @@ import { View } from "react-native";
 import { Screen } from "@/components/layout";
 import { AvatarPicker } from "@/components/profile/avatar-picker";
 import {
+  isProfileComplete,
   ProfileFields,
-  validateAge,
+  validateProfileFields,
 } from "@/components/profile/profile-fields";
 import { Button, Header, Input, Modal, useToast } from "@/components/ui";
 import { useSession } from "@/context/session";
@@ -29,7 +30,7 @@ export default function MyProfilePage() {
     draft.firstName,
     "Your first name can't be empty",
   );
-  const ageError = validateAge(draft.age);
+  const detailErrors = validateProfileFields(draft);
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
 
   const handleSave = () => {
@@ -49,7 +50,7 @@ export default function MyProfilePage() {
           title="Save"
           size="lg"
           fullWidth
-          disabled={!dirty || !!nameError || !!ageError}
+          disabled={!dirty || !!nameError || !isProfileComplete(draft)}
           onPress={handleSave}
         />
       }
@@ -72,7 +73,7 @@ export default function MyProfilePage() {
         <ProfileFields
           values={draft}
           onChange={(changes) => setDraft({ ...draft, ...changes })}
-          ageError={ageError}
+          errors={detailErrors}
         />
       </View>
 

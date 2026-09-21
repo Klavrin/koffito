@@ -14,7 +14,7 @@ export const motivationQuestion: SurveyQuestion = {
   key: "motivation",
   section: "Interests",
   question: "Why do you want to use Koffito?",
-  max: 5,
+  max: 2,
   options: [
     { key: "socialize", emoji: "💬", label: "Socialize" },
     { key: "friends", emoji: "🤝", label: "Make friends" },
@@ -109,8 +109,8 @@ export const avatarOptions = [
 ];
 
 export const genderOptions = [
-  "Woman",
-  "Man",
+  "Female",
+  "Male",
   "Non-binary",
   "Prefer not to say",
 ];
@@ -128,6 +128,7 @@ export const coffeeOptions = [
   "Cold brew",
   "Iced coffee",
   "Chai latte",
+  "Matcha",
   "Tea, actually",
 ];
 
