@@ -60,7 +60,7 @@ const groups: {
       { label: "person", href: { pathname: "/person", params: { id: "u1" } } },
       { label: "settings", href: "/settings" },
       { label: "survey-profile-settings", href: "/survey-profile-settings" },
-      { label: "admin", href: "/admin" },
+      { label: "admin — reports", href: "/admin" },
       { label: "components", href: "/components" },
     ],
   },
