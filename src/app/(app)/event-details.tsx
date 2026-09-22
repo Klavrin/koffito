@@ -133,21 +133,19 @@ export default function EventDetailsPage() {
         {state?.kind === "mystery" && event && (
           <LocationCountdown revealAt={getRevealTime(event)} />
         )}
-      </EventHero>
-
-      <View className="gap-6 px-5">
         {state?.kind === "awaiting-reveal" && event && (
           <Animated.View entering={ZoomIn.duration(motion.base)}>
             <Button
               title="Reveal the café"
               size="lg"
-              fullWidth
               leftIcon="lock-open-outline"
               onPress={() => revealEvent(event.id)}
             />
           </Animated.View>
         )}
+      </EventHero>
 
+      <View className="gap-6 px-5">
         {/* Faces and headcount stay hidden until the café is revealed. */}
         {event && !hidden && (
           <PeopleGoing

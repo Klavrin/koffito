@@ -1,11 +1,12 @@
 import { Image } from "expo-image";
 import { View } from "react-native";
-import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeIn } from "react-native-reanimated";
 
 import { MeetupStatus } from "@/components/koffito";
-import { AvatarGroup, Button, Card, Text } from "@/components/ui";
+import { AvatarGroup, Badge, Button, Card, Icon, Text } from "@/components/ui";
 import { formatAttendance, getCafeLabel, getEventState } from "@/data/events";
 import { toAvatarPeople } from "@/data/users";
+import { cn } from "@/lib/cn";
 import { formatDateTime, formatRelativeDay } from "@/lib/date";
 import { motion } from "@/theme/tokens";
 import type { CoffeeEvent } from "@/types/koffito";
@@ -17,8 +18,6 @@ export type EventCardProps = {
   event: CoffeeEvent;
   onPress?: () => void;
   animateIn?: boolean | number;
-  /** Opens a café whose reveal time has passed. */
-  onReveal?: () => void;
   /** Answer to "did this happen?" on a past coffee talk. */
   onConfirm?: (happened: boolean) => void;
   /** Opens the review sheet for a past coffee talk that happened. */
@@ -29,19 +28,25 @@ export type EventCardProps = {
  * List card for a coffee talk. The layout is shared; what changes per state is
  * the photo, the location line and the footer — see `getEventState`.
  */
-export function EventCard({ event, onPress, animateIn, onReveal, onConfirm, onReview }: EventCardProps) {
+export function EventCard({ event, onPress, animateIn, onConfirm, onReview }: EventCardProps) {
   const state = getEventState(event);
   const locked = state.kind === "mystery" || state.kind === "awaiting-reveal";
+  // The café is sitting there waiting to be opened, so this card asks for attention.
+  const ready = state.kind === "awaiting-reveal";
 
   const locationLabel =
     state.kind === "mystery"
       ? `Revealed ${formatRelativeDay(state.revealAt)}`
       : state.kind === "awaiting-reveal"
-        ? "Ready to open"
+        ? "The reveal is awaiting"
         : event.cafe.address;
 
   return (
-    <Card onPress={onPress} animateIn={animateIn} padding="sm" className="gap-3">
+    <Card
+      onPress={onPress}
+      animateIn={animateIn}
+      padding="sm"
+      className={cn("gap-3", ready && "border-2 border-primary bg-secondary")}>
       <View className="flex-row gap-3">
         <View>
           <Animated.View key={locked ? "locked" : "open"} entering={FadeIn.duration(motion.slow)}>
@@ -57,7 +62,11 @@ export function EventCard({ event, onPress, animateIn, onReveal, onConfirm, onRe
           {/* Marks the blurred photo as deliberately hidden, not a failed image. */}
           {locked && (
             <View className="absolute inset-0 items-center justify-center">
-              <Text className="text-[40px] leading-[48px] text-white">?</Text>
+              {ready ? (
+                <Icon name="lock-open" size={34} color="#FFFDF9" />
+              ) : (
+                <Text className="text-[40px] leading-[48px] text-white">?</Text>
+              )}
             </View>
           )}
         </View>
@@ -83,14 +92,8 @@ export function EventCard({ event, onPress, animateIn, onReveal, onConfirm, onRe
             {formatAttendance(event)}
           </Text>
         </View>
-        <MeetupStatus status={event.status} />
+        {ready ? <Badge label="Tap to reveal" variant="primary" icon="lock-open-outline" /> : <MeetupStatus status={event.status} />}
       </View>
-
-      {state.kind === "awaiting-reveal" && onReveal && (
-        <Animated.View entering={ZoomIn.duration(motion.base)} className="border-t border-border pt-3">
-          <Button title="Reveal the café" size="sm" fullWidth leftIcon="lock-open-outline" onPress={onReveal} />
-        </Animated.View>
-      )}
 
       {state.kind === "past" && state.needsConfirm && onConfirm && (
         <View className="gap-2 border-t border-border pt-3">

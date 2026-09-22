@@ -139,7 +139,12 @@ export const isLocationHidden = (event: CoffeeEvent) => {
 };
 
 /** Café name to show; the real one only after the reveal. */
-export const getCafeLabel = (event: CoffeeEvent) => (isLocationHidden(event) ? "Café locked" : event.cafe.name);
+export const getCafeLabel = (event: CoffeeEvent) => {
+  const state = getEventState(event);
+  if (state.kind === "mystery") return "Café locked";
+  if (state.kind === "awaiting-reveal") return "Café ready to open";
+  return event.cafe.name;
+};
 
 /** Coffee talks a person has actually had, with the cafés and people they met. */
 export const getPersonStats = (events: CoffeeEvent[], userId: string) => {
