@@ -10,7 +10,13 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm install
    ```
 
-2. Start the app
+2. Point the app at Supabase
+
+   Copy `.env.example` to `.env` and fill in the project URL and publishable key
+   (Supabase dashboard → Project Settings → API). Both values are safe to ship in
+   the client; row-level security policies protect the data.
+
+3. Start the app
 
    ```bash
    npx expo start
@@ -24,6 +30,18 @@ In the output, you'll find options to open the app in a
 - [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+
+## Backend
+
+Koffito stores its data in Supabase (Postgres + Auth). The front end talks to it through
+`src/lib/supabase.ts`; everything the screens need lives in `src/api/`, which wraps the
+database functions (`get_my_events`, `get_open_events`, `join_event`, `leave_event`, …)
+and tables (`profiles`, `surveys`, `user_settings`, `reports`, `event_ratings`) and maps
+rows to the app's types. `src/types/database.ts` holds the generated schema types.
+
+Coffee talks are created by admins (`profiles.is_admin`), and the café plus the other
+guests stay hidden until the event's reveal time — the API simply leaves them out, and
+the UI shows a "surprise café" until then.
 
 ## Get a fresh project
 

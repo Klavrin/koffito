@@ -13,6 +13,8 @@ export type AvatarStatus = "online" | "away" | "busy";
 export type AvatarProps = {
   name: string;
   source?: ImageSource | string | null;
+  /** Emoji avatar, shown when there is no photo. */
+  emoji?: string;
   size?: AvatarSize;
   status?: AvatarStatus;
   /** Custom badge rendered on the top-right (e.g. an emoji or count). */
@@ -26,6 +28,14 @@ const sizes: Record<AvatarSize, { px: number; text: string; dot: number }> = {
   md: { px: 48, text: "text-base", dot: 12 },
   lg: { px: 64, text: "text-xl", dot: 14 },
   xl: { px: 96, text: "text-3xl", dot: 18 },
+};
+
+const emojiSizes: Record<AvatarSize, string> = {
+  xs: "text-[14px] leading-[20px]",
+  sm: "text-[18px] leading-[24px]",
+  md: "text-[24px] leading-[32px]",
+  lg: "text-[32px] leading-[42px]",
+  xl: "text-[48px] leading-[62px]",
 };
 
 const statusClasses: Record<AvatarStatus, string> = {
@@ -46,7 +56,7 @@ function toneIndex(name: string) {
   return hash % avatarTones.light.length;
 }
 
-export function Avatar({ name, source, size = "md", status, badge, className }: AvatarProps) {
+export function Avatar({ name, source, emoji, size = "md", status, badge, className }: AvatarProps) {
   const { scheme } = useKoffitoTheme();
   const { px, text, dot } = sizes[size];
 
@@ -63,6 +73,10 @@ export function Avatar({ name, source, size = "md", status, badge, className }: 
           transition={200}
           style={{ width: px, height: px, borderRadius: px / 2 }}
         />
+      ) : emoji ? (
+        <View style={{ width: px, height: px }} className="items-center justify-center rounded-full bg-secondary">
+          <Text className={emojiSizes[size]}>{emoji}</Text>
+        </View>
       ) : (
         <View
           style={{ width: px, height: px, backgroundColor: avatarTones[scheme][toneIndex(name)] }}
@@ -87,7 +101,7 @@ export function Avatar({ name, source, size = "md", status, badge, className }: 
 }
 
 export type AvatarGroupProps = {
-  people: { name: string; source?: AvatarProps["source"] }[];
+  people: { name: string; source?: AvatarProps["source"]; emoji?: string }[];
   size?: AvatarSize;
   max?: number;
 };
@@ -105,7 +119,7 @@ export function AvatarGroup({ people, size = "sm", max = 3 }: AvatarGroupProps) 
           key={`${person.name}-${index}`}
           style={{ marginLeft: index === 0 ? 0 : -px / 3 }}
           className="rounded-full border-2 border-surface">
-          <Avatar name={person.name} source={person.source} size={size} />
+          <Avatar name={person.name} source={person.source} emoji={person.emoji} size={size} />
         </View>
       ))}
       {extra > 0 && (

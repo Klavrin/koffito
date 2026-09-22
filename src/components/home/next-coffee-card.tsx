@@ -1,8 +1,7 @@
 import { View } from "react-native";
 
 import { AvatarGroup, Badge, Card, Icon, Text } from "@/components/ui";
-import { isLocationHidden } from "@/data/events";
-import { toAvatarPeople } from "@/data/users";
+import { toAvatarPeople } from "@/lib/events";
 import { formatDateTime, formatRelativeDay } from "@/lib/date";
 import type { CoffeeEvent } from "@/types/koffito";
 
@@ -24,7 +23,7 @@ export function NextCoffeeCard({ event, onPress }: NextCoffeeCardProps) {
 
       <View className="gap-1">
         <Text variant="heading" tone="on-secondary">
-          {isLocationHidden(event) ? "Surprise café 🤫" : event.cafe.name}
+          {event.cafe?.name ?? "Surprise café 🤫"}
         </Text>
         <Text variant="caption" tone="on-secondary">
           {formatDateTime(event.date)}
@@ -32,7 +31,13 @@ export function NextCoffeeCard({ event, onPress }: NextCoffeeCardProps) {
       </View>
 
       <View className="flex-row items-center justify-between">
-        <AvatarGroup people={toAvatarPeople(event.participants)} size="sm" />
+        {event.participants.length > 0 ? (
+          <AvatarGroup people={toAvatarPeople(event.participants)} size="sm" />
+        ) : (
+          <Text variant="caption" tone="on-secondary">
+            Your coffee mates are revealed soon
+          </Text>
+        )}
         <Icon name="arrow-forward-circle" size={28} color="primary" />
       </View>
     </Card>

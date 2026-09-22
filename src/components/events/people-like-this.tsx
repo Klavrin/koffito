@@ -1,7 +1,7 @@
 import { View } from "react-native";
 
 import { AvatarGroup, Text } from "@/components/ui";
-import { toAvatarPeople } from "@/data/users";
+import { toAvatarPeople } from "@/lib/events";
 import type { User } from "@/types/koffito";
 
 export type PeopleLikeThisProps = {

@@ -1,19 +1,51 @@
 import { router } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
+import { fetchSettings, saveSettings } from "@/api";
 import { Screen } from "@/components/layout";
 import { SettingsRow, SettingsSection } from "@/components/settings/settings-section";
-import { Header, Modal, Text } from "@/components/ui";
-import { useSession } from "@/context/session";
+import { Header, Modal, Text, useToast } from "@/components/ui";
+import { useProfile, useSession } from "@/context/session";
+import { useResource } from "@/hooks/use-resource";
+import { describeError } from "@/lib/errors";
 import { goBack } from "@/lib/navigation";
+import type { Settings } from "@/types/koffito";
+
+const defaults: Settings = { notifications: true, reminders: true };
 
 export default function SettingsPage() {
+  const profile = useProfile();
   const { signOut } = useSession();
+  const toast = useToast();
 
-  const [notifications, setNotifications] = useState(true);
-  const [reminders, setReminders] = useState(true);
-  const [showOnline, setShowOnline] = useState(false);
+  const loadSettings = useCallback(() => fetchSettings(profile.id), [profile.id]);
+  const { data, setData } = useResource(loadSettings);
+  const settings = data ?? defaults;
+
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  // Flip the switch right away and roll it back if the save fails.
+  const toggle = (key: keyof Settings) => async (value: boolean) => {
+    setData((current) => ({ ...(current ?? defaults), [key]: value }));
+    try {
+      await saveSettings(profile.id, { [key]: value });
+    } catch (error) {
+      setData((current) => ({ ...(current ?? defaults), [key]: !value }));
+      toast.show({ title: "Couldn't save that", message: describeError(error), variant: "error" });
+    }
+  };
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+    } catch (error) {
+      setSigningOut(false);
+      setSignOutOpen(false);
+      toast.show({ title: "Couldn't log you out", message: describeError(error), variant: "error" });
+    }
+  };
 
   return (
     <Screen header={<Header title="Settings" onBack={goBack} />}>
@@ -37,24 +69,21 @@ export default function SettingsPage() {
           icon="notifications-outline"
           label="Notifications"
           description="Invites, matches and messages"
-          toggle={{ value: notifications, onChange: setNotifications }}
+          toggle={{ value: settings.notifications, onChange: toggle("notifications") }}
         />
         <SettingsRow
           icon="alarm-outline"
           label="Coffee talk reminders"
           description="A nudge before each meetup"
-          toggle={{ value: reminders, onChange: setReminders }}
-        />
-        <SettingsRow
-          icon="radio-button-on-outline"
-          label="Show when I'm online"
-          toggle={{ value: showOnline, onChange: setShowOnline }}
+          toggle={{ value: settings.reminders, onChange: toggle("reminders") }}
         />
       </SettingsSection>
 
       <SettingsSection title="Support">
         <SettingsRow icon="flag-outline" label="Report a problem" onPress={() => router.push("/report")} />
-        <SettingsRow icon="shield-checkmark-outline" label="Reports" description="Admin area" onPress={() => router.push("/admin")} />
+        {profile.isAdmin && (
+          <SettingsRow icon="shield-checkmark-outline" label="Reports" description="Admin area" onPress={() => router.push("/admin")} />
+        )}
         <SettingsRow icon="color-palette-outline" label="Component gallery" description="For developers" onPress={() => router.push("/components")} />
       </SettingsSection>
 
@@ -63,7 +92,7 @@ export default function SettingsPage() {
       </SettingsSection>
 
       <Text variant="caption" tone="muted" className="text-center">
-        Koffito · made with ☕
+        {profile.email ? `Logged in as ${profile.email}` : "Koffito · made with ☕"}
       </Text>
 
       <Modal
@@ -72,7 +101,7 @@ export default function SettingsPage() {
         emoji="👋"
         title="Leaving already?"
         description="You'll need to log in again to join coffee talks."
-        primaryAction={{ title: "Log out", variant: "destructive", onPress: signOut }}
+        primaryAction={{ title: "Log out", variant: "destructive", loading: signingOut, onPress: handleSignOut }}
         secondaryAction={{ title: "Stay", onPress: () => setSignOutOpen(false) }}
       />
     </Screen>

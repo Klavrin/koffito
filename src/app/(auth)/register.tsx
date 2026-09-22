@@ -5,8 +5,9 @@ import { View } from "react-native";
 import { AuthHero } from "@/components/auth/auth-hero";
 import { AuthSwitchLink } from "@/components/auth/auth-switch-link";
 import { Screen } from "@/components/layout";
-import { Button, Header, Input } from "@/components/ui";
+import { Button, Header, Input, useToast } from "@/components/ui";
 import { useSession } from "@/context/session";
+import { describeError } from "@/lib/errors";
 import {
   isValid,
   validateEmail,
@@ -16,7 +17,8 @@ import {
 } from "@/lib/validation";
 
 export default function RegisterPage() {
-  const { signIn } = useSession();
+  const { signUp } = useSession();
+  const toast = useToast();
 
   const [form, setForm] = useState({ name: "", surname: "", email: "", password: "", confirmation: "" });
   const [submitted, setSubmitted] = useState(false);
@@ -33,21 +35,28 @@ export default function RegisterPage() {
   };
   const showError = (field: keyof typeof errors) => (submitted ? errors[field] : undefined);
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     setSubmitted(true);
     if (!isValid(errors)) return;
 
     setLoading(true);
-    // Stand-in for the real request. New profiles are not onboarded, so Home sends them to the survey.
-    setTimeout(
-      () =>
-        signIn({
-          firstName: form.name.trim(),
-          lastName: form.surname.trim() || undefined,
-          email: form.email.trim(),
-        }),
-      600,
-    );
+    try {
+      const needsConfirmation = await signUp({
+        firstName: form.name.trim(),
+        lastName: form.surname.trim() || undefined,
+        email: form.email.trim(),
+        password: form.password,
+      });
+
+      // Otherwise the session guard takes over and Home sends new profiles to the survey.
+      if (needsConfirmation) {
+        toast.show({ title: "Check your inbox 📬", message: "Confirm your email, then log in to get started.", variant: "success" });
+        router.replace("/login");
+      }
+    } catch (error) {
+      toast.show({ title: "Couldn't create your account", message: describeError(error), variant: "error" });
+      setLoading(false);
+    }
   };
 
   return (

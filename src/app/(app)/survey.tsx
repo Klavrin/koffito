@@ -9,8 +9,9 @@ import { OptionList } from "@/components/survey/option-list";
 import { SurveyProgress } from "@/components/survey/survey-progress";
 import { SurveyStep } from "@/components/survey/survey-step";
 import { Button, Header, Text, useToast } from "@/components/ui";
-import { useSession } from "@/context/session";
+import { useProfile, useSession } from "@/context/session";
 import { interestQuestions, motivationQuestion, type SurveyQuestion } from "@/data/survey";
+import { describeError } from "@/lib/errors";
 import { goBack } from "@/lib/navigation";
 import type { SurveyAnswers } from "@/types/koffito";
 
@@ -31,10 +32,12 @@ export default function SurveyPage() {
   const retake = mode === "interests";
   const steps = retake ? interestSteps : onboardingSteps;
 
-  const { profile, updateProfile } = useSession();
+  const profile = useProfile();
+  const { updateProfile } = useSession();
   const toast = useToast();
 
   const [stepIndex, setStepIndex] = useState(0);
+  const [saving, setSaving] = useState(false);
   const [answers, setAnswers] = useState<SurveyAnswers>(profile.survey);
   const [avatar, setAvatar] = useState(profile.avatar);
   const [details, setDetails] = useState<ProfileFieldValues>({
@@ -54,10 +57,18 @@ export default function SurveyPage() {
     goBack();
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!isLast) return setStepIndex(stepIndex + 1);
 
-    updateProfile({ ...details, avatar, survey: answers, onboarded: true });
+    setSaving(true);
+    try {
+      // Retakes only touch the answers; onboarding also saves the "about you" step.
+      await updateProfile(retake ? { survey: answers } : { ...details, avatar, survey: answers, onboarded: true });
+    } catch (error) {
+      toast.show({ title: "Couldn't save your answers", message: describeError(error), variant: "error" });
+      setSaving(false);
+      return;
+    }
 
     if (retake) {
       toast.show({ title: "Interests updated", message: "We'll use them for your next matches.", variant: "success" });
@@ -81,6 +92,7 @@ export default function SurveyPage() {
           fullWidth
           rightIcon={isLast ? undefined : "arrow-forward"}
           disabled={!canContinue}
+          loading={saving}
           onPress={handleNext}
         />
       }>

@@ -1,15 +1,15 @@
 import { router } from "expo-router";
+import { useCallback } from "react";
 import { View } from "react-native";
 
+import { fetchMyStats } from "@/api";
 import { InfoRow } from "@/components/events/info-row";
 import { Screen, Section } from "@/components/layout";
 import { EmojiAvatar } from "@/components/profile/emoji-avatar";
-import { Badge, Button, Card, Chip, Header, IconButton, Text } from "@/components/ui";
-import { useEvents } from "@/context/events";
-import { useSession } from "@/context/session";
-import { visitedCafes } from "@/data/cafes";
+import { Badge, Button, Card, Chip, Header, IconButton, Skeleton, Text } from "@/components/ui";
+import { useProfile } from "@/context/session";
 import { findSurveyOption } from "@/data/survey";
-import { users } from "@/data/users";
+import { useResource } from "@/hooks/use-resource";
 
 /** Survey questions surfaced on the profile, in display order. */
 const interestGroups = [
@@ -18,14 +18,15 @@ const interestGroups = [
 ];
 
 export default function ProfilePage() {
-  const { profile } = useSession();
-  const { events } = useEvents();
+  const profile = useProfile();
 
-  const coffeeTalks = events.filter((event) => event.joined && event.status === "completed").length;
-  const stats = [
-    { label: "Coffee talks", value: coffeeTalks },
-    { label: "Cafés visited", value: visitedCafes.length },
-    { label: "People met", value: users.length },
+  const loadStats = useCallback(() => fetchMyStats(profile.id), [profile.id]);
+  const { data: stats, loading } = useResource(loadStats);
+
+  const statItems = [
+    { label: "Coffee talks", value: stats?.coffeeTalks },
+    { label: "Cafés visited", value: stats?.cafesVisited },
+    { label: "People met", value: stats?.peopleMet },
   ];
 
   const meetup = findSurveyOption("meetup", profile.survey.meetup?.[0] ?? "");
@@ -64,11 +65,15 @@ export default function ProfilePage() {
       </View>
 
       <Card className="flex-row">
-        {stats.map((stat) => (
+        {statItems.map((stat) => (
           <View key={stat.label} className="flex-1 items-center gap-0.5">
-            <Text variant="title" tone="primary">
-              {stat.value}
-            </Text>
+            {loading && stat.value === undefined ? (
+              <Skeleton width={28} height={26} />
+            ) : (
+              <Text variant="title" tone="primary">
+                {stat.value ?? "–"}
+              </Text>
+            )}
             <Text variant="caption" tone="muted">
               {stat.label}
             </Text>

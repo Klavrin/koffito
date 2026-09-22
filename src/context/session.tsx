@@ -1,52 +1,72 @@
-import { createContext, type PropsWithChildren, useContext, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useState } from "react";
 
+import { fetchProfile, register, type Registration, saveProfile, signInWithPassword, signOut as signOutRequest } from "@/api";
+import { useResource } from "@/hooks/use-resource";
+import { supabase } from "@/lib/supabase";
 import type { Profile } from "@/types/koffito";
 
 type SessionContextValue = {
-  session: string | null;
-  profile: Profile;
-  /** Pass profile details when they are known (e.g. right after registering). */
-  signIn: (profile?: Partial<Profile>) => void;
-  signOut: () => void;
-  updateProfile: (changes: Partial<Profile>) => void;
-};
-
-/** Stand-in for a returning user until a real backend exists. */
-const returningProfile: Profile = {
-  firstName: "George",
-  email: "george@koffito.app",
-  avatar: "🦊",
-  gender: "Man",
-  age: "28",
-  occupation: "Product designer",
-  favoriteCoffee: "Flat white",
-  survey: {
-    motivation: ["friends", "places"],
-    hobbies: ["hiking", "movies", "cooking"],
-    topics: ["traveling", "stories"],
-    meetup: ["long"],
-    personality: ["ambivert"],
-  },
-  onboarded: true,
+  session: Session | null;
+  /** The signed-in user's profile; `null` while signed out or when it failed to load. */
+  profile: Profile | null;
+  /** True once the stored session was restored and, if signed in, the profile finished loading. */
+  ready: boolean;
+  profileError?: unknown;
+  signIn: (email: string, password: string) => Promise<void>;
+  /** Resolves to `true` when the user must confirm their email before logging in. */
+  signUp: (details: Registration) => Promise<boolean>;
+  signOut: () => Promise<void>;
+  updateProfile: (changes: Partial<Profile>) => Promise<void>;
+  refreshProfile: () => Promise<void>;
 };
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
+/** Tracks the Supabase Auth session and keeps the signed-in user's profile loaded. */
 export function SessionProvider({ children }: PropsWithChildren) {
-  const [session, setSession] = useState<string | null>(null);
-  const [profile, setProfile] = useState<Profile>(returningProfile);
+  const [session, setSession] = useState<Session | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setSessionReady(true);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const userId = session?.user.id;
+  const email = session?.user.email;
+
+  const loadProfile = useCallback(() => fetchProfile(userId ?? "", email), [userId, email]);
+  const profileState = useResource(loadProfile, !!userId);
+  const profile = profileState.data ?? null;
+  const { setData: setProfile } = profileState;
+
+  const updateProfile = useCallback(
+    async (changes: Partial<Profile>) => {
+      if (!profile) throw new Error("not_authenticated");
+      await saveProfile(profile, changes);
+      setProfile((current) => ({ ...(current ?? profile), ...changes }));
+    },
+    [profile, setProfile],
+  );
 
   return (
     <SessionContext.Provider
       value={{
         session,
         profile,
-        signIn: (details) => {
-          setProfile(details ? { firstName: "", survey: {}, onboarded: false, ...details } : returningProfile);
-          setSession("temporary-session");
-        },
-        signOut: () => setSession(null),
-        updateProfile: (changes) => setProfile((current) => ({ ...current, ...changes })),
+        ready: sessionReady && (!userId || !!profile || !!profileState.error),
+        profileError: profileState.error,
+        signIn: signInWithPassword,
+        signUp: register,
+        signOut: signOutRequest,
+        updateProfile,
+        refreshProfile: profileState.refresh,
       }}>
       {children}
     </SessionContext.Provider>
@@ -61,4 +81,15 @@ export function useSession() {
   }
 
   return value;
+}
+
+/** The signed-in user's profile. Only for screens behind the auth guard, where it is always loaded. */
+export function useProfile() {
+  const { profile } = useSession();
+
+  if (!profile) {
+    throw new Error("useProfile needs a signed-in user with a loaded profile");
+  }
+
+  return profile;
 }

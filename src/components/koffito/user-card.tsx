@@ -32,7 +32,7 @@ export function UserCard({
   if (variant === "compact") {
     return (
       <Card padding="sm" onPress={onPress} animateIn={animateIn} className="flex-row items-center gap-3">
-        <Avatar name={user.name} source={user.photo} size="md" status={status} />
+        <Avatar name={user.name} source={user.photo} emoji={user.emoji} size="md" status={status} />
         <View className="flex-1">
           <Text variant="label" numberOfLines={1}>
             {heading}
@@ -54,7 +54,7 @@ export function UserCard({
   return (
     <Card onPress={onPress} animateIn={animateIn} className="gap-4">
       <View className="flex-row items-center gap-4">
-        <Avatar name={user.name} source={user.photo} size="lg" status={status} />
+        <Avatar name={user.name} source={user.photo} emoji={user.emoji} size="lg" status={status} />
         <View className="flex-1 gap-0.5">
           <Text variant="heading" numberOfLines={1}>
             {heading}
