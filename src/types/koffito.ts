@@ -66,6 +66,10 @@ export type CoffeeEvent = {
   joined: boolean;
   /** Blind coffee talks keep the café secret until shortly before the meetup. */
   locationHidden?: boolean;
+  /** Set once the user confirms whether a past coffee talk actually happened. */
+  attendance?: "happened" | "missed";
+  /** The user's own review; only for coffee talks that happened. */
+  review?: { rating: number; comment: string };
 };
 
 export type ReportStatus = "open" | "reviewing" | "resolved";

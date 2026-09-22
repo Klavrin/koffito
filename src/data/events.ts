@@ -123,5 +123,6 @@ export const getPersonStats = (events: CoffeeEvent[], userId: string) => {
 export const formatAttendance = (event: CoffeeEvent) => {
   if (isLocationHidden(event)) return "Who's coming is a surprise";
   const count = event.participants.length;
-  return `${count} ${count === 1 ? "person" : "people"} going`;
+  const who = `${count} ${count === 1 ? "person" : "people"}`;
+  return isUpcoming(event) ? `${who} going` : `${who} went`;
 };

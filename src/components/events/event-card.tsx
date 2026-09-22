@@ -2,23 +2,32 @@ import { Image } from "expo-image";
 import { View } from "react-native";
 
 import { MeetupStatus } from "@/components/koffito";
-import { AvatarGroup, Card, Text } from "@/components/ui";
-import { formatAttendance, getCafeLabel, isLocationHidden } from "@/data/events";
+import { AvatarGroup, Button, Card, Text } from "@/components/ui";
+import { formatAttendance, getCafeLabel, isLocationHidden, isUpcoming } from "@/data/events";
 import { toAvatarPeople } from "@/data/users";
 import { formatDateTime } from "@/lib/date";
 import type { CoffeeEvent } from "@/types/koffito";
 
 import { InfoRow } from "./info-row";
+import { RatingStars } from "./rating-stars";
 
 export type EventCardProps = {
   event: CoffeeEvent;
   onPress?: () => void;
   animateIn?: boolean | number;
+  /** Answer to "did this happen?" on a past coffee talk. */
+  onConfirm?: (happened: boolean) => void;
+  /** Opens the review sheet for a past coffee talk that happened. */
+  onReview?: () => void;
 };
 
 /** List card for a coffee talk: café picture, when/where and who's coming. */
-export function EventCard({ event, onPress, animateIn }: EventCardProps) {
+export function EventCard({ event, onPress, animateIn, onConfirm, onReview }: EventCardProps) {
   const hidden = isLocationHidden(event);
+  // Past coffee talks are confirmed first, then reviewed.
+  const past = !isUpcoming(event) && event.joined;
+  const askConfirm = past && !event.attendance && !!onConfirm;
+  const askReview = past && event.attendance === "happened" && !event.review && !!onReview;
 
   return (
     <Card onPress={onPress} animateIn={animateIn} padding="sm" className="gap-3">
@@ -58,6 +67,36 @@ export function EventCard({ event, onPress, animateIn }: EventCardProps) {
         </View>
         <MeetupStatus status={event.status} />
       </View>
+
+      {askConfirm && (
+        <View className="gap-2 border-t border-border pt-3">
+          <Text variant="label">Did this coffee talk happen?</Text>
+          {/* Button sizes itself to its content, so each half needs its own flex box. */}
+          <View className="flex-row gap-2">
+            <View className="flex-1">
+              <Button title="Yes" size="sm" fullWidth onPress={() => onConfirm(true)} />
+            </View>
+            <View className="flex-1">
+              <Button title="No" variant="outline" size="sm" fullWidth onPress={() => onConfirm(false)} />
+            </View>
+          </View>
+        </View>
+      )}
+
+      {askReview && (
+        <View className="border-t border-border pt-3">
+          <Button title="Leave a review" variant="secondary" size="sm" fullWidth leftIcon="star-outline" onPress={onReview} />
+        </View>
+      )}
+
+      {event.review && (
+        <View className="flex-row items-center gap-2 border-t border-border pt-3">
+          <RatingStars value={event.review.rating} size={16} />
+          <Text variant="caption" tone="muted" className="flex-1" numberOfLines={1}>
+            {event.review.comment || "Thanks for the review"}
+          </Text>
+        </View>
+      )}
     </Card>
   );
 }
