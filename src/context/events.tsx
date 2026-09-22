@@ -22,6 +22,10 @@ type EventsContextValue = {
   joinEvent: (id: string) => void;
   leaveEvent: (id: string) => void;
   cancelEvent: (id: string) => void;
+  /** Records whether a past coffee talk happened. */
+  confirmAttendance: (id: string, happened: boolean) => void;
+  /** Stores the user's review, or their note about a coffee talk that fell through. */
+  reviewEvent: (id: string, review: { rating: number; comment: string }) => void;
 };
 
 const EventsContext = createContext<EventsContextValue | null>(null);
@@ -63,6 +67,18 @@ export function EventsProvider({ children }: PropsWithChildren) {
             current.map((event) =>
               event.id === id ? { ...event, status: "cancelled" } : event,
             ),
+          ),
+        confirmAttendance: (id, happened) =>
+          setEvents((current) =>
+            current.map((event) =>
+              event.id === id
+                ? { ...event, attendance: happened ? "happened" : "missed" }
+                : event,
+            ),
+          ),
+        reviewEvent: (id, review) =>
+          setEvents((current) =>
+            current.map((event) => (event.id === id ? { ...event, review } : event)),
           ),
       }}
     >
