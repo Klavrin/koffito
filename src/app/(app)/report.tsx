@@ -63,7 +63,7 @@ export default function ReportPage() {
       }
     >
       <Card variant="filled" className="gap-1">
-        <Text variant="label">We&apos;re sorry for an unple</Text>
+        <Text variant="label">We&apos;re sorry something went wrong</Text>
         <Text variant="caption" tone="muted">
           Reports are private. The people involved won&apos;t know who sent it.
         </Text>

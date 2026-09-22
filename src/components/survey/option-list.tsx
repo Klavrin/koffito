@@ -42,7 +42,7 @@ export function OptionList({ options, selected, onChange, max }: OptionListProps
               active ? "border-primary bg-secondary" : "border-transparent bg-surface",
               disabled && "opacity-50",
             )}>
-            <Text className="text-[24px] leading-[32px]">{option.emoji}</Text>
+            {option.emoji && <Text className="text-[24px] leading-[32px]">{option.emoji}</Text>}
             <Text variant="label" tone={active ? "on-secondary" : "default"} className="flex-1">
               {option.label}
             </Text>
