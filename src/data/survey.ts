@@ -61,16 +61,20 @@ export const interestQuestions: SurveyQuestion[] = [
     question: "What is your ideal coffee meetup?",
     max: 1,
     options: [
-      { key: "quick", emoji: "⚡", label: "Quick coffee (30 - 60 min)" },
+      {
+        key: "quick",
+        emoji: "☕",
+        label: "Quick - short and casual",
+      },
       {
         key: "long",
-        emoji: "🛋️",
-        label: "Long coffee (forget about time limits)",
+        emoji: "🕰️",
+        label: "Long - take your time and chat",
       },
       {
         key: "active",
-        emoji: "🎳",
-        label: "Active coffee (coffee and a fun activity)",
+        emoji: "🚶",
+        label: "Active - followed by a walk or activity",
       },
     ],
   },
