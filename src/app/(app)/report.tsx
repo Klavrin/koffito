@@ -21,7 +21,10 @@ export default function ReportPage() {
   const [sending, setSending] = useState(false);
 
   const event = getEvent(eventId);
-  const detailsError = details.trim().length >= MIN_DETAILS ? undefined : "A sentence or two helps us understand what happened";
+  const detailsError =
+    details.trim().length >= MIN_DETAILS
+      ? undefined
+      : "A sentence or two helps us understand what happened";
 
   const handleSubmit = () => {
     setSubmitted(true);
@@ -30,24 +33,49 @@ export default function ReportPage() {
     setSending(true);
     // Stand-in for the real request.
     setTimeout(() => {
-      toast.show({ title: "Report sent", message: "Thank you — our team will take a look.", variant: "success" });
+      toast.show({
+        title: "Report sent",
+        message: "Thank you - our team will take a look.",
+        variant: "success",
+      });
       goBack();
     }, 600);
   };
 
   return (
     <Screen
-      header={<Header title="Report" subtitle={event ? `Coffee talk at ${event.cafe.name}` : undefined} onBack={goBack} />}
-      footer={<Button title="Send report" size="lg" fullWidth loading={sending} disabled={reason.length === 0} onPress={handleSubmit} />}>
+      header={
+        <Header
+          title="Report"
+          subtitle={event ? `Coffee talk at ${event.cafe.name}` : undefined}
+          onBack={goBack}
+        />
+      }
+      footer={
+        <Button
+          title="Send report"
+          size="lg"
+          fullWidth
+          loading={sending}
+          disabled={reason.length === 0}
+          onPress={handleSubmit}
+        />
+      }
+    >
       <Card variant="filled" className="gap-1">
-        <Text variant="label">We&apos;re sorry something went wrong 💛</Text>
+        <Text variant="label">We&apos;re sorry for an unple</Text>
         <Text variant="caption" tone="muted">
           Reports are private. The people involved won&apos;t know who sent it.
         </Text>
       </Card>
 
       <Section title="Report reason">
-        <OptionList options={reportReasons} max={1} selected={reason} onChange={setReason} />
+        <OptionList
+          options={reportReasons}
+          max={1}
+          selected={reason}
+          onChange={setReason}
+        />
       </Section>
 
       <Input

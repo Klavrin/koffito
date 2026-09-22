@@ -2,7 +2,10 @@ import { router } from "expo-router";
 import { useState } from "react";
 
 import { Screen } from "@/components/layout";
-import { SettingsRow, SettingsSection } from "@/components/settings/settings-section";
+import {
+  SettingsRow,
+  SettingsSection,
+} from "@/components/settings/settings-section";
 import { Header, Modal, Text } from "@/components/ui";
 import { useSession } from "@/context/session";
 import { goBack } from "@/lib/navigation";
@@ -12,7 +15,6 @@ export default function SettingsPage() {
 
   const [notifications, setNotifications] = useState(true);
   const [reminders, setReminders] = useState(true);
-  const [showOnline, setShowOnline] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
 
   return (
@@ -28,7 +30,9 @@ export default function SettingsPage() {
           icon="sparkles-outline"
           label="Retake interests survey"
           description="Update what you like talking about"
-          onPress={() => router.push({ pathname: "/survey", params: { mode: "interests" } })}
+          onPress={() =>
+            router.push({ pathname: "/survey", params: { mode: "interests" } })
+          }
         />
       </SettingsSection>
 
@@ -36,7 +40,7 @@ export default function SettingsPage() {
         <SettingsRow
           icon="notifications-outline"
           label="Notifications"
-          description="Invites, matches and messages"
+          description="Opportunities, event updates and more"
           toggle={{ value: notifications, onChange: setNotifications }}
         />
         <SettingsRow
@@ -45,21 +49,23 @@ export default function SettingsPage() {
           description="A nudge before each meetup"
           toggle={{ value: reminders, onChange: setReminders }}
         />
-        <SettingsRow
-          icon="radio-button-on-outline"
-          label="Show when I'm online"
-          toggle={{ value: showOnline, onChange: setShowOnline }}
-        />
       </SettingsSection>
 
       <SettingsSection title="Support">
-        <SettingsRow icon="flag-outline" label="Report a problem" onPress={() => router.push("/report")} />
-        <SettingsRow icon="shield-checkmark-outline" label="Reports" description="Admin area" onPress={() => router.push("/admin")} />
-        <SettingsRow icon="color-palette-outline" label="Component gallery" description="For developers" onPress={() => router.push("/components")} />
+        <SettingsRow
+          icon="flag-outline"
+          label="Report a problem"
+          onPress={() => router.push("/report")}
+        />
       </SettingsSection>
 
       <SettingsSection title="Session">
-        <SettingsRow icon="log-out-outline" label="Log out" tone="error" onPress={() => setSignOutOpen(true)} />
+        <SettingsRow
+          icon="log-out-outline"
+          label="Log out"
+          tone="error"
+          onPress={() => setSignOutOpen(true)}
+        />
       </SettingsSection>
 
       <Text variant="caption" tone="muted" className="text-center">
@@ -72,8 +78,15 @@ export default function SettingsPage() {
         emoji="👋"
         title="Leaving already?"
         description="You'll need to log in again to join coffee talks."
-        primaryAction={{ title: "Log out", variant: "destructive", onPress: signOut }}
-        secondaryAction={{ title: "Stay", onPress: () => setSignOutOpen(false) }}
+        primaryAction={{
+          title: "Log out",
+          variant: "destructive",
+          onPress: signOut,
+        }}
+        secondaryAction={{
+          title: "Stay",
+          onPress: () => setSignOutOpen(false),
+        }}
       />
     </Screen>
   );
