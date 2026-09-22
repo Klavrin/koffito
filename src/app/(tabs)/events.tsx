@@ -18,7 +18,7 @@ const filters: { key: Filter; label: string }[] = [
 ];
 
 export default function EventsPage() {
-  const { events, confirmAttendance, reviewEvent } = useEvents();
+  const { events, revealEvent, confirmAttendance, reviewEvent } = useEvents();
   const toast = useToast();
   const [filter, setFilter] = useState<Filter>("upcoming");
   // Which past coffee talk is being reviewed, and in which sheet.
@@ -87,6 +87,7 @@ export default function EventsPage() {
               event={event}
               animateIn={index}
               onPress={() => router.push({ pathname: "/event-details", params: { id: event.id } })}
+              onReveal={() => revealEvent(event.id)}
               onConfirm={(happened) => handleConfirm(event.id, happened)}
               onReview={() => setReviewing(event.id)}
             />
