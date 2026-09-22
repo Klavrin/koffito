@@ -1,11 +1,11 @@
+import { Image } from "expo-image";
 import { Pressable, View } from "react-native";
 
-import { Button, Card, Text } from "@/components/ui";
-import { getSpotsLeft } from "@/lib/events";
+import { AvatarGroup, Button, Card, Text } from "@/components/ui";
+import { toAvatarPeople } from "@/data/users";
 import { formatDateTime } from "@/lib/date";
 import type { CoffeeEvent } from "@/types/koffito";
 
-import { CafePhoto } from "./cafe-photo";
 import { InfoRow } from "./info-row";
 
 export type CafeCarouselCardProps = {
@@ -13,26 +13,33 @@ export type CafeCarouselCardProps = {
   width: number;
   onPress: () => void;
   onJoin: () => void;
-  joining?: boolean;
 };
 
-/** Swipeable card over the map: café (or surprise) blurb and "Join meeting". */
-export function CafeCarouselCard({ event, width, onPress, onJoin, joining = false }: CafeCarouselCardProps) {
-  const spotsLeft = getSpotsLeft(event);
-  const title = event.cafe?.name ?? "Surprise café 🤫";
+/** Swipeable card over the map: café picture, blurb and "Join meeting". */
+export function CafeCarouselCard({ event, width, onPress, onJoin }: CafeCarouselCardProps) {
+  const spotsLeft = event.maxParticipants - event.participants.length;
 
   return (
     <View style={{ width }}>
       <Card padding="none" className="overflow-hidden">
-        {/* Only the summary opens details, so the join button isn't nested in another button. */}
-        <Pressable accessibilityRole="button" accessibilityLabel={`View ${title}`} onPress={onPress}>
-          <CafePhoto cafe={event.cafe} height={120} radius={0} iconSize={40} />
+        {/* Only the café summary opens details, so the join button isn't nested in another button. */}
+        <Pressable accessibilityRole="button" accessibilityLabel={`View ${event.cafe.name}`} onPress={onPress}>
+          <Image
+            source={event.cafe.photo}
+            contentFit="cover"
+            transition={200}
+            accessibilityLabel={`Photo of ${event.cafe.name}`}
+            style={{ width: "100%", height: 120 }}
+          />
           <View className="gap-2 px-4 pt-4">
-            <Text variant="heading" numberOfLines={1}>
-              {title}
-            </Text>
+            <View className="flex-row items-center justify-between gap-2">
+              <Text variant="heading" numberOfLines={1} className="flex-1">
+                {event.cafe.name}
+              </Text>
+              <AvatarGroup people={toAvatarPeople(event.participants)} size="xs" />
+            </View>
             <Text variant="caption" tone="muted" numberOfLines={2}>
-              {event.cafe?.description ?? "The café and your coffee mates are revealed shortly before you meet."}
+              {event.cafe.description}
             </Text>
             <InfoRow
               size="sm"
@@ -42,7 +49,7 @@ export function CafeCarouselCard({ event, width, onPress, onJoin, joining = fals
           </View>
         </Pressable>
         <View className="p-4 pt-3">
-          <Button title="Join meeting" leftIcon="cafe" fullWidth loading={joining} disabled={spotsLeft <= 0} onPress={onJoin} />
+          <Button title="Join meeting" leftIcon="cafe" fullWidth disabled={spotsLeft <= 0} onPress={onJoin} />
         </View>
       </Card>
     </View>

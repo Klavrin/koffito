@@ -1,4 +1,4 @@
-export type SurveyOption = { key: string; emoji: string; label: string };
+export type SurveyOption = { key: string; emoji?: string; label: string };
 
 export type SurveyQuestion = {
   key: string;
@@ -12,9 +12,9 @@ export type SurveyQuestion = {
 
 export const motivationQuestion: SurveyQuestion = {
   key: "motivation",
-  section: "Profile",
+  section: "Interests",
   question: "Why do you want to use Koffito?",
-  max: 5,
+  max: 2,
   options: [
     { key: "socialize", emoji: "💬", label: "Socialize" },
     { key: "friends", emoji: "🤝", label: "Make friends" },
@@ -61,9 +61,21 @@ export const interestQuestions: SurveyQuestion[] = [
     question: "What is your ideal coffee meetup?",
     max: 1,
     options: [
-      { key: "quick", emoji: "⚡", label: "Quick coffee (30 - 60 min)" },
-      { key: "long", emoji: "🛋️", label: "Long coffee (forget about time limits)" },
-      { key: "active", emoji: "🎳", label: "Active coffee (coffee and a fun activity)" },
+      {
+        key: "quick",
+        emoji: "☕",
+        label: "Quick - short and casual",
+      },
+      {
+        key: "long",
+        emoji: "🕰️",
+        label: "Long - take your time and chat",
+      },
+      {
+        key: "active",
+        emoji: "🚶",
+        label: "Active - followed by a walk or activity",
+      },
     ],
   },
   {
@@ -74,20 +86,59 @@ export const interestQuestions: SurveyQuestion[] = [
     options: [
       { key: "introvert", emoji: "🌙", label: "Introvert" },
       { key: "extrovert", emoji: "☀️", label: "Extrovert" },
-      { key: "ambivert", emoji: "🌗", label: "Ambivert (somewhere in between)" },
+      {
+        key: "ambivert",
+        emoji: "🌗",
+        label: "Ambivert (somewhere in between)",
+      },
     ],
   },
 ];
 
 export const surveyQuestions = [motivationQuestion, ...interestQuestions];
 
-export const avatarOptions = ["☕", "🦊", "🐻", "🐱", "🦉", "🐼", "🌻", "🍩", "🥐", "🎧", "📚", "🌈"];
+export const avatarOptions = [
+  "☕",
+  "🦊",
+  "🐻",
+  "🐱",
+  "🦉",
+  "🐼",
+  "🌻",
+  "🍩",
+  "🥐",
+  "🎧",
+  "📚",
+  "🌈",
+];
 
-export const genderOptions = ["Woman", "Man", "Non-binary", "Prefer not to say"];
+export const genderOptions = [
+  "Female",
+  "Male",
+  "Non-binary",
+  "Prefer not to say",
+];
 
-export const coffeeOptions = ["Espresso", "Flat white", "Cappuccino", "Latte", "Filter", "Iced coffee", "Tea, actually"];
+export const coffeeOptions = [
+  "Espresso",
+  "Americano",
+  "Flat white",
+  "Cappuccino",
+  "Latte",
+  "Mocha",
+  "Macchiato",
+  "Cortado",
+  "Filter",
+  "Cold brew",
+  "Iced coffee",
+  "Chai latte",
+  "Matcha",
+  "Tea, actually",
+];
 
 /** Looks up the display option for a stored survey answer. */
 export function findSurveyOption(questionKey: string, optionKey: string) {
-  return surveyQuestions.find((q) => q.key === questionKey)?.options.find((o) => o.key === optionKey);
+  return surveyQuestions
+    .find((q) => q.key === questionKey)
+    ?.options.find((o) => o.key === optionKey);
 }

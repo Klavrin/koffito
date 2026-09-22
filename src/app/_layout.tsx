@@ -7,10 +7,8 @@ import {
 } from "@expo-google-fonts/nunito";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
-import { ProfileLoadError } from "@/components/auth/profile-load-error";
 import { ToastProvider } from "@/components/ui/toast";
 import { EventsProvider } from "@/context/events";
 import { SessionProvider, useSession } from "@/context/session";
@@ -18,6 +16,9 @@ import { KoffitoThemeProvider } from "@/theme/theme-provider";
 import "../../global.css";
 
 SplashScreen.preventAutoHideAsync();
+
+// DEV ONLY — start on the dev jump-menu. Remove this line and `src/app/dev.tsx` to restore normal startup.
+export const unstable_settings = { initialRouteName: "dev" };
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -48,21 +49,9 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { session, profile, ready } = useSession();
+  const { session, isLoading } = useSession();
 
-  useEffect(() => {
-    if (ready) SplashScreen.hideAsync();
-  }, [ready]);
-
-  // The stored session is still being restored; the splash screen covers this.
-  if (!ready) {
-    return null;
-  }
-
-  // Signed in, but the profile request failed: offer a retry instead of an empty app.
-  if (session && !profile) {
-    return <ProfileLoadError />;
-  }
+  if (isLoading) return null;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
@@ -73,6 +62,8 @@ function RootNavigator() {
       <Stack.Protected guard={!session}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
+      {/* DEV ONLY — unguarded so it is reachable in either session state. */}
+      <Stack.Screen name="dev" />
     </Stack>
   );
 }

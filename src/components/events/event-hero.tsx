@@ -3,11 +3,10 @@ import type { ReactNode } from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Icon, IconButton } from "@/components/ui";
+import { IconButton } from "@/components/ui";
 
 export type EventHeroProps = {
-  /** Missing for surprise cafés and venues without a picture. */
-  photo?: string | null;
+  photo: string;
   /** Blur the picture for surprise cafés. */
   hidden?: boolean;
   onBack: () => void;
@@ -26,20 +25,14 @@ export function EventHero({ photo, hidden = false, onBack, actions, children, ac
 
   return (
     <View style={{ height: HERO_HEIGHT }} className="overflow-hidden rounded-b-sheet bg-surface-muted">
-      {photo ? (
-        <Image
-          source={photo}
-          contentFit="cover"
-          transition={250}
-          blurRadius={hidden ? 60 : 0}
-          accessibilityLabel={accessibilityLabel}
-          style={{ width: "100%", height: "100%" }}
-        />
-      ) : (
-        <View accessibilityRole="image" accessibilityLabel={accessibilityLabel} className="flex-1 items-center justify-center bg-secondary">
-          <Icon name={hidden ? "lock-closed" : "cafe"} size={72} color="on-secondary" />
-        </View>
-      )}
+      <Image
+        source={photo}
+        contentFit="cover"
+        transition={250}
+        blurRadius={hidden ? 60 : 0}
+        accessibilityLabel={accessibilityLabel}
+        style={{ width: "100%", height: "100%" }}
+      />
 
       {children && <View className="absolute inset-0 items-center justify-center">{children}</View>}
 

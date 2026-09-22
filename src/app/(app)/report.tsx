@@ -1,22 +1,17 @@
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 
-import { sendReport } from "@/api";
 import { Screen, Section } from "@/components/layout";
 import { OptionList } from "@/components/survey/option-list";
 import { Button, Card, Header, Input, Text, useToast } from "@/components/ui";
 import { useEvents } from "@/context/events";
-import { useProfile } from "@/context/session";
 import { reportReasons } from "@/data/reports";
-import { describeError } from "@/lib/errors";
 import { goBack } from "@/lib/navigation";
-import type { ReportReason } from "@/types/koffito";
 
 const MIN_DETAILS = 10;
 
 export default function ReportPage() {
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
-  const profile = useProfile();
   const { getEvent } = useEvents();
   const toast = useToast();
 
@@ -26,36 +21,61 @@ export default function ReportPage() {
   const [sending, setSending] = useState(false);
 
   const event = getEvent(eventId);
-  const detailsError = details.trim().length >= MIN_DETAILS ? undefined : "A sentence or two helps us understand what happened";
+  const detailsError =
+    details.trim().length >= MIN_DETAILS
+      ? undefined
+      : "A sentence or two helps us understand what happened";
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     setSubmitted(true);
     if (reason.length === 0 || detailsError) return;
 
     setSending(true);
-    try {
-      await sendReport({ reporterId: profile.id, reason: reason[0] as ReportReason, details, eventId: event?.id });
-      toast.show({ title: "Report sent", message: "Thank you — our team will take a look.", variant: "success" });
+    // Stand-in for the real request.
+    setTimeout(() => {
+      toast.show({
+        title: "Report sent",
+        message: "Thank you - our team will take a look.",
+        variant: "success",
+      });
       goBack();
-    } catch (error) {
-      toast.show({ title: "Couldn't send the report", message: describeError(error), variant: "error" });
-      setSending(false);
-    }
+    }, 600);
   };
 
   return (
     <Screen
-      header={<Header title="Report" subtitle={event ? `Coffee talk at ${event.cafe?.name ?? "a surprise café"}` : undefined} onBack={goBack} />}
-      footer={<Button title="Send report" size="lg" fullWidth loading={sending} disabled={reason.length === 0} onPress={handleSubmit} />}>
+      header={
+        <Header
+          title="Report"
+          subtitle={event ? `Coffee talk at ${event.cafe.name}` : undefined}
+          onBack={goBack}
+        />
+      }
+      footer={
+        <Button
+          title="Send report"
+          size="lg"
+          fullWidth
+          loading={sending}
+          disabled={reason.length === 0}
+          onPress={handleSubmit}
+        />
+      }
+    >
       <Card variant="filled" className="gap-1">
-        <Text variant="label">We&apos;re sorry something went wrong 💛</Text>
+        <Text variant="label">We&apos;re sorry something went wrong</Text>
         <Text variant="caption" tone="muted">
           Reports are private. The people involved won&apos;t know who sent it.
         </Text>
       </Card>
 
       <Section title="Report reason">
-        <OptionList options={reportReasons} max={1} selected={reason} onChange={setReason} />
+        <OptionList
+          options={reportReasons}
+          max={1}
+          selected={reason}
+          onChange={setReason}
+        />
       </Section>
 
       <Input

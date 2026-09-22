@@ -1,114 +1,188 @@
-import { router } from "expo-router";
-import { useRef, useState } from "react";
-import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, useWindowDimensions, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Image } from "expo-image";
+import { useState } from "react";
+import { View } from "react-native";
 
-import { CafeCarouselCard } from "@/components/events/cafe-carousel-card";
-import { MapPlaceholder } from "@/components/events/map-placeholder";
-import { EmptyState, ErrorState, Header, Skeleton, useToast } from "@/components/ui";
+import { AvailabilityCalendar } from "@/components/home/availability-calendar";
+import { Screen } from "@/components/layout";
+import {
+  Button,
+  Card,
+  EmptyState,
+  Header,
+  Icon,
+  Text,
+  useToast,
+} from "@/components/ui";
 import { useEvents } from "@/context/events";
-import { useProfile } from "@/context/session";
-import { formatRelativeDay } from "@/lib/date";
-import { describeError } from "@/lib/errors";
-import { isUpcoming } from "@/lib/events";
+import { isUpcoming } from "@/data/events";
+import { dayKey, formatDate, formatTime } from "@/lib/date";
 import { goBack } from "@/lib/navigation";
 
-const CARD_GAP = 12;
-const SIDE_PADDING = 20;
-
 export default function FindCoffeeTalkPage() {
-  const profile = useProfile();
-  const { openEvents, loading, error, refresh, joinEvent } = useEvents();
+  const { events, joinEvent, leaveEvent } = useEvents();
   const toast = useToast();
-  const insets = useSafeAreaInsets();
-  const { width: screenWidth } = useWindowDimensions();
+  const [selectedDay, setSelectedDay] = useState<string>();
 
-  const carouselRef = useRef<ScrollView>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [joiningId, setJoiningId] = useState<string | null>(null);
+  const available = events
+    .filter(isUpcoming)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+  const joinedCount = available.filter((event) => event.joined).length;
+  const availableDays = [
+    ...new Set(available.map((event) => dayKey(event.date))),
+  ];
+  const visibleEvents = selectedDay
+    ? available.filter((event) => dayKey(event.date) === selectedDay)
+    : available;
 
-  const open = openEvents.filter((event) => !event.joined && isUpcoming(event));
-  // Leave a peek of the next card so the rail reads as swipeable.
-  const cardWidth = Math.min(screenWidth, 480) - SIDE_PADDING * 2 - 24;
-  const snap = cardWidth + CARD_GAP;
-
-  const selectIndex = (index: number) => {
-    setActiveIndex(index);
-    carouselRef.current?.scrollTo({ x: index * snap, animated: true });
+  const handleJoin = (eventId: string) => {
+    joinEvent(eventId);
+    toast.show({
+      title: "Event joined",
+      message:
+        "Your spot is saved. The café and guests will be revealed closer to the meetup.",
+      variant: "success",
+    });
   };
 
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const index = Math.round(event.nativeEvent.contentOffset.x / snap);
-    if (index !== activeIndex && index >= 0 && index < open.length) setActiveIndex(index);
+  const handleCancel = (eventId: string) => {
+    leaveEvent(eventId);
+    toast.show({
+      title: "Event cancelled",
+      message: "You can join another time whenever you are ready.",
+      variant: "info",
+    });
   };
-
-  const handleJoin = async (id: string) => {
-    setJoiningId(id);
-    try {
-      await joinEvent(id);
-      toast.show({ title: "You're in! ☕", message: "We saved you a seat. The café is revealed before you meet.", variant: "success" });
-      router.replace({ pathname: "/event-details", params: { id } });
-    } catch (joinError) {
-      toast.show({ title: "Couldn't join", message: describeError(joinError), variant: "error" });
-      setJoiningId(null);
-    }
-  };
-
-  const showSkeleton = loading && openEvents.length === 0;
-  const showError = !!error && openEvents.length === 0;
 
   return (
-    <View className="flex-1 bg-background">
-      <Header title="Find coffee talk" subtitle={showSkeleton ? "Looking around…" : `${open.length} coffee talk(s) near you`} onBack={goBack} />
-
-      {showSkeleton ? (
-        <View className="gap-3 px-5 pt-2">
-          <Skeleton height={260} className="rounded-3xl" />
-        </View>
-      ) : showError ? (
-        <ErrorState title="Couldn't load coffee talks" onRetry={refresh} className="flex-1 justify-center px-5" />
-      ) : open.length === 0 ? (
+    <Screen
+      header={
+        <Header
+          title="Find coffee talk"
+          subtitle="Choose a time that works for you"
+          onBack={goBack}
+        />
+      }
+    >
+      {available.length === 0 ? (
         <EmptyState
-          emoji="🗺️"
-          title="No coffee talks nearby"
-          description={
-            profile.isAdmin ? "Be the first — start one and others will join." : "New coffee talks pop up every week. Check back soon!"
-          }
-          action={profile.isAdmin ? { title: "Create new event", leftIcon: "add", onPress: () => router.replace("/create-event") } : undefined}
-          className="flex-1 justify-center px-5"
+          emoji="☕"
+          title="No coffee talks available"
+          description="Check back soon for new times to meet over coffee."
+          action={{ title: "Go back", leftIcon: "arrow-back", onPress: goBack }}
+          className="flex-1 justify-center"
         />
       ) : (
-        <View className="flex-1 overflow-hidden rounded-t-sheet">
-          <MapPlaceholder
-            pins={open.map((event) => ({ id: event.id, label: `Coffee talk ${formatRelativeDay(event.date)}` }))}
-            activeId={open[activeIndex]?.id}
-            onSelect={(id) => selectIndex(open.findIndex((event) => event.id === id))}
-          />
+        <View className="gap-6">
+          {joinedCount > 0 && (
+            <Card padding="sm" className="border border-primary">
+              <Text variant="label" tone="primary">
+                You've joined {joinedCount} coffee talk
+                {joinedCount === 1 ? "" : "s"}
+              </Text>
+            </Card>
+          )}
 
-          <View style={{ bottom: Math.max(insets.bottom, 16) }} className="absolute inset-x-0">
-            <ScrollView
-              ref={carouselRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              decelerationRate="fast"
-              snapToInterval={snap}
-              onScroll={handleScroll}
-              scrollEventThrottle={32}
-              contentContainerStyle={{ paddingHorizontal: SIDE_PADDING, gap: CARD_GAP, paddingVertical: 8 }}>
-              {open.map((event) => (
-                <CafeCarouselCard
-                  key={event.id}
-                  event={event}
-                  width={cardWidth}
-                  joining={joiningId === event.id}
-                  onPress={() => router.push({ pathname: "/event-details", params: { id: event.id } })}
-                  onJoin={() => handleJoin(event.id)}
-                />
-              ))}
-            </ScrollView>
+          <View className="gap-3">
+            <View className="gap-1">
+              <Text variant="heading">Choose a date</Text>
+              <Text variant="caption" tone="muted">
+                Pick a day to see available coffee talk times.
+              </Text>
+            </View>
+            <Card padding="sm">
+              <AvailabilityCalendar
+                month={new Date()}
+                selected={selectedDay ? [selectedDay] : []}
+                onToggle={(day) =>
+                  setSelectedDay((current) =>
+                    current === day ? undefined : day,
+                  )
+                }
+                editable
+                marked={availableDays}
+              />
+            </Card>
+          </View>
+
+          <View className="gap-3">
+            <View className="flex-row items-end justify-between gap-3">
+              <Text variant="heading">Available times</Text>
+              {!selectedDay && (
+                <Text variant="caption" tone="muted">
+                  {visibleEvents.length} option
+                  {visibleEvents.length === 1 ? "" : "s"}
+                </Text>
+              )}
+            </View>
+
+            {visibleEvents.length === 0 ? (
+              <Card variant="filled" padding="sm">
+                <Text tone="muted">
+                  No coffee talks are available on this date.
+                </Text>
+              </Card>
+            ) : (
+              visibleEvents.map((event, index) => {
+                const joined = event.joined;
+
+                return (
+                  <Card
+                    key={event.id}
+                    animateIn={index}
+                    className={joined ? "border border-primary" : undefined}
+                  >
+                    <View className="gap-4">
+                      <View className="h-32 overflow-hidden rounded-2xl">
+                        <Image
+                          source={event.cafe.photo}
+                          contentFit="cover"
+                          blurRadius={25}
+                          transition={200}
+                          accessibilityLabel="Blurred photo of the mystery café"
+                          style={{ width: "100%", height: "100%" }}
+                        />
+                        <View className="absolute inset-0 items-center justify-center bg-black/20">
+                          <View className="flex-row items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5">
+                            <Icon
+                              name="lock-closed"
+                              size={14}
+                              color="primary"
+                            />
+                            <Text variant="caption">Revealed 24h before</Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      <View className="flex-row items-center justify-between gap-3">
+                        <View className="flex-1 gap-1">
+                          <Text variant="heading">
+                            {formatDate(event.date)}
+                          </Text>
+                        </View>
+                        <View className="items-end gap-0.5">
+                          <Text variant="label">{formatTime(event.date)}</Text>
+                          <Text variant="caption" tone="muted">
+                            Location locked
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Button
+                        title={joined ? "Cancel event" : "Join event"}
+                        variant={joined ? "outline" : "primary"}
+                        fullWidth
+                        onPress={() =>
+                          joined ? handleCancel(event.id) : handleJoin(event.id)
+                        }
+                      />
+                    </View>
+                  </Card>
+                );
+              })
+            )}
           </View>
         </View>
       )}
-    </View>
+    </Screen>
   );
 }

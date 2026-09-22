@@ -6,9 +6,9 @@ import { View } from "react-native";
 import { AuthHero } from "@/components/auth/auth-hero";
 import { AuthSwitchLink } from "@/components/auth/auth-switch-link";
 import { Screen } from "@/components/layout";
-import { Button, Header, Input, useToast } from "@/components/ui";
+import { Button, Header, Input } from "@/components/ui";
+import { useToast } from "@/components/ui/toast";
 import { useSession } from "@/context/session";
-import { describeError } from "@/lib/errors";
 import { isValid, validateEmail, validateRequired } from "@/lib/validation";
 
 export default function LoginPage() {
@@ -16,13 +16,13 @@ export default function LoginPage() {
   const toast = useToast();
   const passwordRef = useRef<TextInput>(null);
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const errors = {
-    email: validateEmail(email),
+    identifier: validateEmail(identifier),
     password: validateRequired(password, "Enter your password"),
   };
 
@@ -32,10 +32,15 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      // On success the session guard swaps to the signed-in stack.
-      await signIn(email, password);
-    } catch (error) {
-      toast.show({ title: "Couldn't log you in", message: describeError(error), variant: "error" });
+      const { error } = await signIn(identifier, password);
+      if (error) {
+        toast.show({
+          title: "Could not log in",
+          message: error.message,
+          variant: "error",
+        });
+      }
+    } finally {
       setLoading(false);
     }
   };
@@ -50,16 +55,16 @@ export default function LoginPage() {
         <Input
           label="Email"
           placeholder="you@example.com"
-          leftIcon="mail-outline"
+          leftIcon="person-outline"
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
-          textContentType="emailAddress"
+          textContentType="username"
           returnKeyType="next"
-          value={email}
-          onChangeText={setEmail}
+          value={identifier}
+          onChangeText={setIdentifier}
           onSubmitEditing={() => passwordRef.current?.focus()}
-          error={submitted ? errors.email : undefined}
+          error={submitted ? errors.identifier : undefined}
         />
         <Input
           ref={passwordRef}
