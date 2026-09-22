@@ -1,6 +1,6 @@
-import { Image } from "expo-image";
 import { View } from "react-native";
 
+import { CafePhoto } from "@/components/events/cafe-photo";
 import { Card, Icon, Text } from "@/components/ui";
 import type { Cafe } from "@/types/koffito";
 
@@ -13,13 +13,7 @@ export type CafeVisitedCardProps = {
 export function CafeVisitedCard({ cafe, onPress }: CafeVisitedCardProps) {
   return (
     <Card padding="none" onPress={onPress} className="w-44 overflow-hidden">
-      <Image
-        source={cafe.photo}
-        contentFit="cover"
-        transition={200}
-        accessibilityLabel={`Photo of ${cafe.name}`}
-        style={{ width: "100%", height: 104 }}
-      />
+      <CafePhoto cafe={cafe} height={104} radius={0} />
       <View className="gap-1 p-3">
         <Text variant="label" numberOfLines={1}>
           {cafe.name}

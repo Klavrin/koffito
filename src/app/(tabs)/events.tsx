@@ -6,9 +6,10 @@ import { EventCard } from "@/components/events/event-card";
 import { MissedFeedbackSheet } from "@/components/events/missed-feedback-sheet";
 import { RateExperienceSheet } from "@/components/events/rate-experience-sheet";
 import { Screen } from "@/components/layout";
-import { Chip, EmptyState, Header, useToast } from "@/components/ui";
+import { Chip, EmptyState, ErrorState, Header, Skeleton, useToast } from "@/components/ui";
 import { useEvents } from "@/context/events";
-import { isUpcoming } from "@/data/events";
+import { describeError } from "@/lib/errors";
+import { isUpcoming } from "@/lib/events";
 
 type Filter = "upcoming" | "past";
 
@@ -18,7 +19,7 @@ const filters: { key: Filter; label: string }[] = [
 ];
 
 export default function EventsPage() {
-  const { events, confirmAttendance, reviewEvent } = useEvents();
+  const { events, loading, error, refresh, confirmAttendance, reviewEvent } = useEvents();
   const toast = useToast();
   const [filter, setFilter] = useState<Filter>("upcoming");
   // Which past coffee talk is being reviewed, and in which sheet.
@@ -37,14 +38,21 @@ export default function EventsPage() {
     else setMissed(id);
   };
 
-  const handleReview = (rating: number, comment: string) => {
-    if (reviewing) reviewEvent(reviewing, { rating, comment });
+  const handleReview = async (rating: number, comment: string) => {
+    const id = reviewing;
     setReviewing(null);
-    toast.show({ title: "Thanks for the review!", variant: "success" });
+    if (!id) return;
+
+    try {
+      await reviewEvent(id, { rating, comment });
+      toast.show({ title: "Thanks for the review!", variant: "success" });
+    } catch (reviewError) {
+      toast.show({ title: "Couldn't save your review", message: describeError(reviewError), variant: "error" });
+    }
   };
 
-  const handleMissed = (comment: string) => {
-    if (missed) reviewEvent(missed, { rating: 0, comment });
+  const handleMissed = async (comment: string) => {
+    if (missed) await reviewEvent(missed, { rating: 0, comment });
     setMissed(null);
     toast.show({ title: "Thanks for letting us know", variant: "info" });
   };
@@ -53,6 +61,9 @@ export default function EventsPage() {
   const visible = mine
     .filter((event) => (filter === "upcoming" ? isUpcoming(event) : !isUpcoming(event)))
     .sort((a, b) => (filter === "upcoming" ? a.date.getTime() - b.date.getTime() : b.date.getTime() - a.date.getTime()));
+
+  const showSkeleton = loading && events.length === 0;
+  const showError = !!error && events.length === 0;
 
   return (
     <Screen
@@ -71,7 +82,14 @@ export default function EventsPage() {
         ))}
       </View>
 
-      {visible.length === 0 ? (
+      {showSkeleton ? (
+        <>
+          <Skeleton height={164} className="rounded-3xl" />
+          <Skeleton height={164} className="rounded-3xl" />
+        </>
+      ) : showError ? (
+        <ErrorState title="Couldn't load your coffee talks" onRetry={refresh} className="flex-1 justify-center" />
+      ) : visible.length === 0 ? (
         <EmptyState
           emoji=""
           title={filter === "upcoming" ? "No coffee talks planned" : "No past coffee talks yet"}

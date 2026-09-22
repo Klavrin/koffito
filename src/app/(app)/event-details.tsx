@@ -1,8 +1,9 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Linking, View } from "react-native";
 import Animated, { ZoomIn } from "react-native-reanimated";
 
+import { fetchVenue } from "@/api";
 import { EventHero } from "@/components/events/event-hero";
 import { InfoRow } from "@/components/events/info-row";
 import { LocationCountdown } from "@/components/events/location-countdown";
@@ -17,13 +18,15 @@ import {
   Header,
   IconButton,
   Modal,
+  Skeleton,
   Text,
   useToast,
 } from "@/components/ui";
 import { useEvents } from "@/context/events";
-import { getCafe } from "@/data/cafes";
-import { getEventState, getRevealTime, isUpcoming } from "@/data/events";
+import { useResource } from "@/hooks/use-resource";
 import { formatDateTime } from "@/lib/date";
+import { describeError } from "@/lib/errors";
+import { getEventState, getSpotsLeft, isUpcoming } from "@/lib/events";
 import { goBack } from "@/lib/navigation";
 import { motion } from "@/theme/tokens";
 
@@ -33,27 +36,40 @@ export default function EventDetailsPage() {
     id?: string;
     cafeId?: string;
   }>();
-  const { getEvent, joinEvent, cancelEvent, revealEvent } = useEvents();
+  const { getEvent, joinEvent, cancelEvent, revealEvent, loading } = useEvents();
   const toast = useToast();
+
+  const loadVenue = useCallback(() => fetchVenue(cafeId ?? ""), [cafeId]);
+  const venue = useResource(loadVenue, !!cafeId && !id);
 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [peopleOpen, setPeopleOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const event = getEvent(id);
-  const cafe = event?.cafe ?? getCafe(cafeId);
+  const cafe = event?.cafe ?? venue.data;
 
-  if (!cafe) {
+  if (!event && !cafe) {
+    const pending = (id && loading) || (cafeId && venue.loading);
+
     return (
       <Screen
         header={<Header title="Coffee talk" onBack={goBack} />}
-        contentClassName="flex-1 justify-center"
+        contentClassName={pending ? undefined : "flex-1 justify-center"}
       >
-        <ErrorState
-          title="We lost this coffee talk"
-          description="It may have been cancelled or removed."
-          retryLabel="Go back"
-          onRetry={goBack}
-        />
+        {pending ? (
+          <>
+            <Skeleton height={220} className="rounded-3xl" />
+            <Skeleton height={120} className="rounded-3xl" />
+          </>
+        ) : (
+          <ErrorState
+            title="We lost this coffee talk"
+            description="It may have been cancelled or removed."
+            retryLabel="Go back"
+            onRetry={goBack}
+          />
+        )}
       </Screen>
     );
   }
@@ -61,9 +77,7 @@ export default function EventDetailsPage() {
   const upcoming = !!event && isUpcoming(event);
   const state = event ? getEventState(event) : undefined;
   const hidden = state?.kind === "mystery" || state?.kind === "awaiting-reveal";
-  const spotsLeft = event
-    ? event.maxParticipants - event.participants.length
-    : 0;
+  const spotsLeft = event ? getSpotsLeft(event) : 0;
 
   const openReport = () =>
     router.push({
@@ -71,26 +85,42 @@ export default function EventDetailsPage() {
       params: event ? { eventId: event.id } : {},
     });
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     if (!event) return;
-    cancelEvent(event.id);
-    setCancelOpen(false);
-    toast.show({
-      title: "Coffee talk cancelled",
-      message: "Maybe next time.",
-      variant: "info",
-    });
-    goBack();
+
+    setBusy(true);
+    try {
+      await cancelEvent(event.id);
+      setCancelOpen(false);
+      toast.show({
+        title: "Coffee talk cancelled",
+        message: "Maybe next time.",
+        variant: "info",
+      });
+      goBack();
+    } catch (error) {
+      setBusy(false);
+      setCancelOpen(false);
+      toast.show({ title: "Couldn't cancel", message: describeError(error), variant: "error" });
+    }
   };
 
-  const handleJoin = () => {
+  const handleJoin = async () => {
     if (!event) return;
-    joinEvent(event.id);
-    toast.show({
-      title: "You're in!",
-      message: `We saved you a seat at ${cafe.name}`,
-      variant: "success",
-    });
+
+    setBusy(true);
+    try {
+      await joinEvent(event.id);
+      toast.show({
+        title: "You're in!",
+        message: "Your spot is saved. The café and guests will be revealed closer to the meetup.",
+        variant: "success",
+      });
+    } catch (error) {
+      toast.show({ title: "Couldn't join", message: describeError(error), variant: "error" });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const footer =
@@ -108,6 +138,7 @@ export default function EventDetailsPage() {
         size="lg"
         fullWidth
         leftIcon="cafe"
+        loading={busy}
         disabled={spotsLeft <= 0}
         onPress={handleJoin}
       />
@@ -116,11 +147,11 @@ export default function EventDetailsPage() {
   return (
     <Screen edgeToEdge footer={footer} contentClassName="px-0 pt-0">
       <EventHero
-        photo={cafe.photo}
+        photo={cafe?.photo}
         hidden={hidden}
         onBack={goBack}
         accessibilityLabel={
-          hidden ? "Hidden café picture" : `Photo of ${cafe.name}`
+          hidden || !cafe ? "Hidden café picture" : `Photo of ${cafe.name}`
         }
         actions={
           <IconButton
@@ -130,8 +161,8 @@ export default function EventDetailsPage() {
           />
         }
       >
-        {state?.kind === "mystery" && event && (
-          <LocationCountdown revealAt={getRevealTime(event)} />
+        {state?.kind === "mystery" && (
+          <LocationCountdown revealAt={state.revealAt} />
         )}
         {state?.kind === "awaiting-reveal" && event && (
           <Animated.View entering={ZoomIn.duration(motion.base)}>
@@ -158,14 +189,14 @@ export default function EventDetailsPage() {
         <View className="gap-2">
           <View className="flex-row items-start justify-between gap-3">
             <Text variant="title" className="flex-1" accessibilityRole="header">
-              {hidden ? "Mystery café" : cafe.name}
+              {cafe && !hidden ? cafe.name : "Mystery café"}
             </Text>
-            {event && <MeetupStatus status={event.status} className="mt-1.5" />}
+            {event?.joined && <MeetupStatus status={event.status} className="mt-1.5" />}
           </View>
           <Text tone="muted">
-            {hidden
-              ? "The café will be revealed a day before the meet up. Can you handle the suspense?"
-              : cafe.description}
+            {cafe && !hidden
+              ? cafe.description
+              : "The café will be revealed a day before the meet up. Can you handle the suspense?"}
           </Text>
         </View>
 
@@ -176,14 +207,21 @@ export default function EventDetailsPage() {
               label={formatDateTime(event.date)}
             />
           )}
-          {hidden ? (
+          {event && !event.joined && (
+            <InfoRow icon="people-outline" label={`Groups of ${event.maxParticipants} · ${spotsLeft} spot(s) left`} />
+          )}
+          {!cafe || hidden ? (
             <InfoRow
               icon="lock-closed-outline"
               label="Details hidden until the reveal"
             />
           ) : (
             <>
-              <InfoRow icon="location-outline" label={cafe.address} />
+              <InfoRow
+                icon="location-outline"
+                label={cafe.address}
+                onPress={cafe.mapsUrl ? () => Linking.openURL(cafe.mapsUrl!) : undefined}
+              />
               {cafe.website && (
                 <InfoRow
                   icon="globe-outline"
@@ -234,6 +272,7 @@ export default function EventDetailsPage() {
         primaryAction={{
           title: "Yes, cancel it",
           variant: "destructive",
+          loading: busy,
           onPress: handleCancel,
         }}
         secondaryAction={{

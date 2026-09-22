@@ -4,7 +4,17 @@
  */
 import type { Interest } from "@/constants/interests";
 import type { Database, Json, Tables, TablesUpdate } from "@/types/database";
-import type { Cafe, CoffeeEvent, MeetupStatusType, Profile, Report, Settings, SurveyAnswers, User } from "@/types/koffito";
+import type {
+  Cafe,
+  CoffeeEvent,
+  MeetupStatusType,
+  Profile,
+  ProfileStats,
+  Report,
+  Settings,
+  SurveyAnswers,
+  User,
+} from "@/types/koffito";
 
 type Gender = Database["public"]["Enums"]["gender"];
 type MyEventRow = Database["public"]["Functions"]["get_my_events"]["Returns"][number];
@@ -23,6 +33,9 @@ export type ProfileCard = {
   survey: SurveyAnswers;
 };
 
+/** `get_public_profile()` adds the person's coffee talk stats to their card. */
+export type PublicProfile = ProfileCard & { stats?: Partial<ProfileStats> };
+
 /** Shape produced by the `venue_card()` database function. */
 export type VenueCard = {
   id: string;
@@ -38,8 +51,8 @@ export type VenueCard = {
 };
 
 const genderLabels: Record<Gender, string> = {
-  female: "Woman",
-  male: "Man",
+  female: "Female",
+  male: "Male",
   non_binary: "Non-binary",
   prefer_not_to_say: "Prefer not to say",
 };
@@ -57,6 +70,9 @@ const hobbyInterests: Record<string, Interest> = {
 
 export const toGender = (label?: string) =>
   (Object.keys(genderLabels) as Gender[]).find((key) => genderLabels[key] === label) ?? null;
+
+const isAnswers = (value: unknown): value is SurveyAnswers =>
+  !!value && typeof value === "object" && !Array.isArray(value);
 
 /** Age in whole years for a `YYYY-MM-DD` date of birth. */
 export function ageFromBirthDate(dateOfBirth: string | null) {
@@ -81,7 +97,8 @@ export function birthDateFromAge(age?: string) {
 }
 
 export function toUser(card: ProfileCard): User {
-  const hobbies = card.survey?.hobbies ?? [];
+  const survey = isAnswers(card.survey) ? card.survey : {};
+  const hobbies = survey.hobbies ?? [];
 
   return {
     id: card.id,
@@ -89,9 +106,16 @@ export function toUser(card: ProfileCard): User {
     age: card.age ?? undefined,
     bio: card.occupation ?? undefined,
     emoji: card.emoji ?? undefined,
-    photo: null,
+    gender: card.gender ? genderLabels[card.gender] : undefined,
+    occupation: card.occupation ?? undefined,
+    favoriteCoffee: card.favoriteCoffee ?? undefined,
+    survey,
     interests: hobbies.map((hobby) => hobbyInterests[hobby]).filter((interest): interest is Interest => !!interest),
   };
+}
+
+export function toStats(stats?: Partial<ProfileStats> | null): ProfileStats {
+  return { coffeeTalks: stats?.coffeeTalks ?? 0, cafesVisited: stats?.cafesVisited ?? 0, peopleMet: stats?.peopleMet ?? 0 };
 }
 
 export function toCafe(card: VenueCard): Cafe {
@@ -140,7 +164,9 @@ export function toMyEvent(row: MyEventRow): CoffeeEvent {
     status,
     joined: row.joined,
     locationHidden: row.location_hidden,
-    myRating: row.my_rating ?? undefined,
+    // The database keeps the rating; the comment is only known locally after it was sent.
+    review: row.my_rating ? { rating: row.my_rating, comment: "" } : undefined,
+    attendance: row.my_rating ? "happened" : undefined,
   };
 }
 
@@ -172,7 +198,7 @@ export function toProfile(row: Tables<"profiles">, survey: Json | null, email?: 
     age: ageFromBirthDate(row.date_of_birth),
     occupation: row.occupation ?? undefined,
     favoriteCoffee: row.favorite_coffee ?? undefined,
-    survey: survey && typeof survey === "object" && !Array.isArray(survey) ? (survey as SurveyAnswers) : {},
+    survey: isAnswers(survey) ? survey : {},
     onboarded: !!row.onboarded_at,
     isAdmin: row.is_admin,
   };

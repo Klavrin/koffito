@@ -1,16 +1,16 @@
-import { Image } from "expo-image";
 import { View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 import { MeetupStatus } from "@/components/koffito";
 import { AvatarGroup, Badge, Button, Card, Icon, Text } from "@/components/ui";
-import { formatAttendance, getCafeLabel, getEventState } from "@/data/events";
-import { toAvatarPeople } from "@/data/users";
 import { cn } from "@/lib/cn";
 import { formatDateTime, formatRelativeDay } from "@/lib/date";
+import { formatAttendance, getCafeLabel, getEventState } from "@/lib/events";
+import { toAvatarPeople } from "@/lib/people";
 import { motion } from "@/theme/tokens";
 import type { CoffeeEvent } from "@/types/koffito";
 
+import { CafePhoto } from "./cafe-photo";
 import { InfoRow } from "./info-row";
 import { RatingStars } from "./rating-stars";
 
@@ -39,7 +39,7 @@ export function EventCard({ event, onPress, animateIn, onConfirm, onReview }: Ev
       ? `Revealed ${formatRelativeDay(state.revealAt)}`
       : state.kind === "awaiting-reveal"
         ? "The reveal is awaiting"
-        : event.cafe.address;
+        : (event.cafe?.address ?? "Café to be announced");
 
   return (
     <Card
@@ -50,22 +50,18 @@ export function EventCard({ event, onPress, animateIn, onConfirm, onReview }: Ev
       <View className="flex-row gap-3">
         <View>
           <Animated.View key={locked ? "locked" : "open"} entering={FadeIn.duration(motion.slow)}>
-            <Image
-              source={event.cafe.photo}
-              contentFit="cover"
-              transition={200}
-              blurRadius={locked ? 40 : 0}
-              accessibilityLabel={locked ? "Locked café" : `Photo of ${event.cafe.name}`}
-              style={{ width: 92, height: 92, borderRadius: 20 }}
-            />
+            {/* The API withholds the café while it's a secret, so the placeholder does the hiding. */}
+            <CafePhoto cafe={event.cafe} hidden={locked} width={92} height={92} iconSize={0} />
           </Animated.View>
-          {/* Marks the blurred photo as deliberately hidden, not a failed image. */}
+          {/* Marks the placeholder as deliberately hidden, not a failed image. */}
           {locked && (
             <View className="absolute inset-0 items-center justify-center">
               {ready ? (
-                <Icon name="lock-open" size={34} color="#FFFDF9" />
+                <Icon name="lock-open" size={34} color="on-secondary" />
               ) : (
-                <Text className="text-[40px] leading-[48px] text-white">?</Text>
+                <Text className="text-[40px] leading-[48px]" tone="on-secondary">
+                  ?
+                </Text>
               )}
             </View>
           )}

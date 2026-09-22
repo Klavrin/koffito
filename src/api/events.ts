@@ -46,10 +46,14 @@ export async function createEvent(event: NewEvent) {
   return data;
 }
 
-export async function rateEvent(eventId: string, userId: string, rating: number, comment: string) {
+/** Saves (or replaces) the signed-in user's rating for a coffee talk they attended. */
+export async function rateEvent(eventId: string, rating: number, comment: string) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) throw new Error("not_authenticated");
+
   const { error } = await supabase
     .from("event_ratings")
-    .upsert({ event_id: eventId, user_id: userId, rating, comment }, { onConflict: "event_id,user_id" });
+    .upsert({ event_id: eventId, user_id: auth.user.id, rating, comment }, { onConflict: "event_id,user_id" });
   if (error) throw error;
 }
 

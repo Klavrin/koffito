@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
-import type { Profile, ProfileStats, Settings } from "@/types/koffito";
+import type { Profile, ProfileStats, Settings, User } from "@/types/koffito";
 
-import { toProfile, toProfileUpdate, toSettings, toSettingsUpdate } from "./mappers";
+import { type PublicProfile, toProfile, toProfileUpdate, toSettings, toSettingsUpdate, toStats, toUser } from "./mappers";
 
 /** Loads the signed-in user's profile row and survey answers. */
 export async function fetchProfile(userId: string, email?: string): Promise<Profile> {
@@ -17,7 +17,7 @@ export async function fetchProfile(userId: string, email?: string): Promise<Prof
 }
 
 /** Persists profile edits; survey answers go to their own table. */
-export async function saveProfile(current: Profile, changes: Partial<Profile>) {
+export async function saveProfile(current: Profile & { id: string }, changes: Partial<Profile>) {
   const update = toProfileUpdate(changes, current);
 
   if (Object.keys(update).length > 0) {
@@ -39,12 +39,22 @@ export async function saveProfile(current: Profile, changes: Partial<Profile>) {
   }
 }
 
-export async function fetchMyStats(userId: string): Promise<ProfileStats> {
+/**
+ * Someone's profile card plus their coffee talk stats. The database only answers for
+ * the user themself, admins, or people they shared a revealed coffee talk with.
+ */
+export async function fetchPublicProfile(userId: string): Promise<{ user: User; stats: ProfileStats } | undefined> {
   const { data, error } = await supabase.rpc("get_public_profile", { p_user_id: userId });
   if (error) throw error;
+  if (!data) return undefined;
 
-  const stats = (data as { stats?: Partial<ProfileStats> } | null)?.stats ?? {};
-  return { coffeeTalks: stats.coffeeTalks ?? 0, cafesVisited: stats.cafesVisited ?? 0, peopleMet: stats.peopleMet ?? 0 };
+  const card = data as unknown as PublicProfile;
+  return { user: toUser(card), stats: toStats(card.stats) };
+}
+
+export async function fetchMyStats(userId: string): Promise<ProfileStats> {
+  const profile = await fetchPublicProfile(userId);
+  return profile?.stats ?? toStats();
 }
 
 export async function fetchSettings(userId: string): Promise<Settings> {

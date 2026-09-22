@@ -20,6 +20,7 @@ import {
   motivationQuestion,
   type SurveyQuestion,
 } from "@/data/survey";
+import { describeError } from "@/lib/errors";
 import { goBack } from "@/lib/navigation";
 import type { SurveyAnswers } from "@/types/koffito";
 
@@ -52,6 +53,7 @@ export default function SurveyPage() {
   const [stepIndex, setStepIndex] = useState(0);
   // Profile errors only appear once "Next" has been pressed, like the register form.
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [answers, setAnswers] = useState<SurveyAnswers>(profile.survey);
   const [avatar, setAvatar] = useState(profile.avatar);
   const [details, setDetails] = useState<ProfileFieldValues>({
@@ -75,7 +77,7 @@ export default function SurveyPage() {
     goBack();
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     // Every profile detail is required, so surface what is missing instead of moving on.
     if (step.kind === "about" && !isProfileComplete(details))
       return setSubmitted(true);
@@ -83,7 +85,15 @@ export default function SurveyPage() {
     setSubmitted(false);
     if (!isLast) return setStepIndex(stepIndex + 1);
 
-    updateProfile({ ...details, avatar, survey: answers, onboarded: true });
+    setSaving(true);
+    try {
+      // Retakes only touch the answers; onboarding also saves the "about you" step.
+      await updateProfile(retake ? { survey: answers } : { ...details, avatar, survey: answers, onboarded: true });
+    } catch (error) {
+      toast.show({ title: "Couldn't save your answers", message: describeError(error), variant: "error" });
+      setSaving(false);
+      return;
+    }
 
     if (retake) {
       toast.show({
@@ -120,6 +130,7 @@ export default function SurveyPage() {
           fullWidth
           rightIcon={isLast ? undefined : "arrow-forward"}
           disabled={!canContinue}
+          loading={saving}
           onPress={handleNext}
         />
       }

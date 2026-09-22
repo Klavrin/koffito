@@ -1,8 +1,8 @@
 import { View } from "react-native";
 
 import { AvatarGroup, Badge, Card, Icon, Text } from "@/components/ui";
-import { getCafeLabel, isLocationHidden } from "@/data/events";
-import { toAvatarPeople } from "@/data/users";
+import { getCafeLabel, isLocationHidden } from "@/lib/events";
+import { toAvatarPeople } from "@/lib/people";
 import { formatDateTime, formatRelativeDay } from "@/lib/date";
 import type { CoffeeEvent } from "@/types/koffito";
 
