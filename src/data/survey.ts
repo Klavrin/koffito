@@ -1,4 +1,4 @@
-export type SurveyOption = { key: string; emoji: string; label: string };
+export type SurveyOption = { key: string; emoji?: string; label: string };
 
 export type SurveyQuestion = {
   key: string;
