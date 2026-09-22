@@ -137,6 +137,7 @@ export default function EventDetailsPage() {
         {event && !hidden && (
           <PeopleGoing
             people={event.participants}
+            past={!upcoming}
             onPress={() => setPeopleOpen(true)}
           />
         )}
