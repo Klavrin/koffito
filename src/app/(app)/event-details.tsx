@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Linking, View } from "react-native";
+import Animated, { ZoomIn } from "react-native-reanimated";
 
 import { EventHero } from "@/components/events/event-hero";
 import { InfoRow } from "@/components/events/info-row";
@@ -21,9 +22,10 @@ import {
 } from "@/components/ui";
 import { useEvents } from "@/context/events";
 import { getCafe } from "@/data/cafes";
-import { getRevealTime, isLocationHidden, isUpcoming } from "@/data/events";
+import { getEventState, getRevealTime, isUpcoming } from "@/data/events";
 import { formatDateTime } from "@/lib/date";
 import { goBack } from "@/lib/navigation";
+import { motion } from "@/theme/tokens";
 
 export default function EventDetailsPage() {
   // `id` opens a coffee talk; `cafeId` opens a café on its own (e.g. from "Cafés you've visited").
@@ -31,7 +33,7 @@ export default function EventDetailsPage() {
     id?: string;
     cafeId?: string;
   }>();
-  const { getEvent, joinEvent, cancelEvent } = useEvents();
+  const { getEvent, joinEvent, cancelEvent, revealEvent } = useEvents();
   const toast = useToast();
 
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -57,7 +59,8 @@ export default function EventDetailsPage() {
   }
 
   const upcoming = !!event && isUpcoming(event);
-  const hidden = !!event && isLocationHidden(event);
+  const state = event ? getEventState(event) : undefined;
+  const hidden = state?.kind === "mystery" || state?.kind === "awaiting-reveal";
   const spotsLeft = event
     ? event.maxParticipants - event.participants.length
     : 0;
@@ -127,8 +130,18 @@ export default function EventDetailsPage() {
           />
         }
       >
-        {hidden && event && (
+        {state?.kind === "mystery" && event && (
           <LocationCountdown revealAt={getRevealTime(event)} />
+        )}
+        {state?.kind === "awaiting-reveal" && event && (
+          <Animated.View entering={ZoomIn.duration(motion.base)}>
+            <Button
+              title="Reveal the café"
+              size="lg"
+              leftIcon="lock-open-outline"
+              onPress={() => revealEvent(event.id)}
+            />
+          </Animated.View>
         )}
       </EventHero>
 

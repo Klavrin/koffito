@@ -99,12 +99,52 @@ const REVEAL_BEFORE_MS = DAY;
 
 export const getRevealTime = (event: CoffeeEvent) => new Date(event.date.getTime() - REVEAL_BEFORE_MS);
 
-/** Locked cafés stay hidden until shortly before an upcoming meetup. */
-export const isLocationHidden = (event: CoffeeEvent) =>
-  !!event.locationHidden && isUpcoming(event) && getRevealTime(event).getTime() > Date.now();
+/**
+ * The single source of truth for how a coffee talk is displayed. Every screen
+ * switches on this instead of re-deriving dates, so a backend only has to
+ * supply the fields below and the states stay identical.
+ *
+ *   mystery         blind coffee talk, reveal time not reached yet
+ *   awaiting-reveal reveal time passed, the user has not opened it yet
+ *   revealed        café is visible (never blind, or opened)
+ *   past            the meetup is over: confirm, then review
+ */
+export type EventState =
+  | { kind: "mystery"; revealAt: Date }
+  | { kind: "awaiting-reveal" }
+  | { kind: "revealed" }
+  | { kind: "past"; needsConfirm: boolean; needsReview: boolean };
+
+export const getEventState = (event: CoffeeEvent): EventState => {
+  if (!isUpcoming(event)) {
+    return {
+      kind: "past",
+      needsConfirm: event.joined && !event.attendance,
+      needsReview: event.joined && event.attendance === "happened" && !event.review,
+    };
+  }
+
+  if (event.locationHidden && !event.revealOpened) {
+    const revealAt = getRevealTime(event);
+    return revealAt.getTime() > Date.now() ? { kind: "mystery", revealAt } : { kind: "awaiting-reveal" };
+  }
+
+  return { kind: "revealed" };
+};
+
+/** Locked cafés stay hidden until the reveal time passes and the user opens them. */
+export const isLocationHidden = (event: CoffeeEvent) => {
+  const state = getEventState(event);
+  return state.kind === "mystery" || state.kind === "awaiting-reveal";
+};
 
 /** Café name to show; the real one only after the reveal. */
-export const getCafeLabel = (event: CoffeeEvent) => (isLocationHidden(event) ? "Café locked" : event.cafe.name);
+export const getCafeLabel = (event: CoffeeEvent) => {
+  const state = getEventState(event);
+  if (state.kind === "mystery") return "Café locked";
+  if (state.kind === "awaiting-reveal") return "Café ready to open";
+  return event.cafe.name;
+};
 
 /** Coffee talks a person has actually had, with the cafés and people they met. */
 export const getPersonStats = (events: CoffeeEvent[], userId: string) => {

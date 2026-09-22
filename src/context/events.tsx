@@ -22,6 +22,8 @@ type EventsContextValue = {
   joinEvent: (id: string) => void;
   leaveEvent: (id: string) => void;
   cancelEvent: (id: string) => void;
+  /** Opens a café whose reveal time has passed. */
+  revealEvent: (id: string) => void;
   /** Records whether a past coffee talk happened. */
   confirmAttendance: (id: string, happened: boolean) => void;
   /** Stores the user's review, or their note about a coffee talk that fell through. */
@@ -66,6 +68,12 @@ export function EventsProvider({ children }: PropsWithChildren) {
           setEvents((current) =>
             current.map((event) =>
               event.id === id ? { ...event, status: "cancelled" } : event,
+            ),
+          ),
+        revealEvent: (id) =>
+          setEvents((current) =>
+            current.map((event) =>
+              event.id === id ? { ...event, revealOpened: true } : event,
             ),
           ),
         confirmAttendance: (id, happened) =>
