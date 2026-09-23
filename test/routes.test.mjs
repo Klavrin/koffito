@@ -42,9 +42,8 @@ test("signed-in destinations are reachable from the app", async () => {
   const sources = await Promise.all(routes.map((path) => readFile(path, "utf8")));
   const app = sources.join("\n");
 
-  // `/create-event`, `/admin` and `/components` are not user-facing for now:
-  // no screen links to them, they are reached from the dev menu.
-  for (const destination of ["/survey", "/survey-profile-settings", "/settings", "/find-coffee-talk", "/event-details", "/report"]) {
+  // `/components` is dev-only and reached from the dev menu.
+  for (const destination of ["/survey", "/survey-profile-settings", "/settings", "/find-coffee-talk", "/create-event", "/event-details", "/report", "/admin"]) {
     assert.match(app, new RegExp(`"${destination}"`), `nothing links to ${destination}`);
   }
 });

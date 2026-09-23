@@ -75,6 +75,18 @@ export default function HomePage() {
         onPress={() => router.push("/find-coffee-talk")}
       />
 
+      {/* Only admins set up coffee talks; the database refuses everyone else anyway. */}
+      {profile.isAdmin && (
+        <Button
+          title="Create coffee talk"
+          variant="secondary"
+          size="lg"
+          fullWidth
+          leftIcon="add-circle"
+          onPress={() => router.push("/create-event")}
+        />
+      )}
+
       <Section
         title="Cafés you've visited"
         actionLabel="Find more"

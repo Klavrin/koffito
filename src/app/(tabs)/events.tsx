@@ -6,8 +6,9 @@ import { EventCard } from "@/components/events/event-card";
 import { MissedFeedbackSheet } from "@/components/events/missed-feedback-sheet";
 import { RateExperienceSheet } from "@/components/events/rate-experience-sheet";
 import { Screen } from "@/components/layout";
-import { Chip, EmptyState, ErrorState, Header, Skeleton, useToast } from "@/components/ui";
+import { Chip, EmptyState, ErrorState, Header, IconButton, Skeleton, useToast } from "@/components/ui";
 import { useEvents } from "@/context/events";
+import { useSession } from "@/context/session";
 import { describeError } from "@/lib/errors";
 import { isUpcoming } from "@/lib/events";
 
@@ -19,6 +20,7 @@ const filters: { key: Filter; label: string }[] = [
 ];
 
 export default function EventsPage() {
+  const { profile } = useSession();
   const { events, loading, error, refresh, confirmAttendance, reviewEvent } = useEvents();
   const toast = useToast();
   const [filter, setFilter] = useState<Filter>("upcoming");
@@ -73,6 +75,16 @@ export default function EventsPage() {
           size="large"
           title="Events"
           subtitle="Your coffee talks, all in one place"
+          right={
+            profile.isAdmin ? (
+              <IconButton
+                icon="add"
+                variant="primary"
+                accessibilityLabel="Create coffee talk"
+                onPress={() => router.push("/create-event")}
+              />
+            ) : undefined
+          }
         />
       }
       contentClassName="gap-4">
