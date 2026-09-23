@@ -51,10 +51,19 @@ export async function rateEvent(eventId: string, rating: number, comment: string
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) throw new Error("not_authenticated");
 
-  const { error } = await supabase
+  // Not an upsert: PostgREST would also `SET event_id, user_id`, which users have no grant for.
+  const updated = await supabase
     .from("event_ratings")
-    .upsert({ event_id: eventId, user_id: auth.user.id, rating, comment }, { onConflict: "event_id,user_id" });
-  if (error) throw error;
+    .update({ rating, comment })
+    .eq("event_id", eventId)
+    .eq("user_id", auth.user.id)
+    .select("id");
+  if (updated.error) throw updated.error;
+
+  if (updated.data.length === 0) {
+    const { error } = await supabase.from("event_ratings").insert({ event_id: eventId, user_id: auth.user.id, rating, comment });
+    if (error) throw error;
+  }
 }
 
 /** One café, when the user is allowed to see it (revealed talk or admin). */

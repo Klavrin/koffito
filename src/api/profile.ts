@@ -26,16 +26,17 @@ export async function saveProfile(current: Profile & { id: string }, changes: Pa
   }
 
   if (changes.survey) {
-    const { error } = await supabase.from("surveys").upsert(
-      {
-        user_id: current.id,
-        survey_data: changes.survey,
-        // Finishing onboarding (or retaking the survey) marks it complete so the user can join talks.
-        completed_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id" },
-    );
-    if (error) throw error;
+    // Finishing onboarding (or retaking the survey) marks it complete so the user can join talks.
+    const answers = { survey_data: changes.survey, completed_at: new Date().toISOString() };
+
+    // Not an upsert: PostgREST would also `SET user_id`, which users have no grant for.
+    const updated = await supabase.from("surveys").update(answers).eq("user_id", current.id).select("user_id");
+    if (updated.error) throw updated.error;
+
+    if (updated.data.length === 0) {
+      const { error } = await supabase.from("surveys").insert({ user_id: current.id, ...answers });
+      if (error) throw error;
+    }
   }
 }
 
