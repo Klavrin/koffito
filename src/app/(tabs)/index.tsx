@@ -75,7 +75,7 @@ export default function HomePage() {
         onPress={() => router.push("/find-coffee-talk")}
       />
 
-      {/* Only admins set up coffee talks; the database refuses everyone else anyway. */}
+      {/* Only admins set up coffee talks; the API refuses everyone else anyway. */}
       {profile.isAdmin && (
         <Button
           title="Create coffee talk"

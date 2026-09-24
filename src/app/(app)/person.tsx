@@ -13,7 +13,7 @@ import { toProfileView } from "@/lib/people";
 export default function PersonPage() {
   const { id } = useLocalSearchParams<{ id?: string }>();
 
-  // The database only shares profiles of people you've had a revealed coffee talk with.
+  // The API only shares profiles of people you've had a revealed coffee talk with.
   const loadPerson = useCallback(() => fetchPublicProfile(id ?? ""), [id]);
   const { data, loading, error, refresh } = useResource(loadPerson, !!id);
 
