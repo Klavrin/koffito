@@ -3,7 +3,8 @@ import { supabase } from "./supabase";
 
 export { ApiError, isApiError } from "./api-client";
 
-const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+// Development defaults to an API running next to the app; every other build must set the URL.
+const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? (__DEV__ ? "http://127.0.0.1:8000" : undefined);
 
 if (!apiUrl) {
   throw new Error("Missing EXPO_PUBLIC_API_URL in the environment.");
