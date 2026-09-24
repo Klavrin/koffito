@@ -25,6 +25,40 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## How the app, the API and Supabase fit together
+
+```
+app  ──auth only──▶  Supabase Auth   (sign up, log in, log out, refresh)
+app  ──Bearer JWT──▶ Koffito API     (FastAPI, `backend/`; every data request)
+API  ──user JWT────▶ Supabase Data API (RLS applies; gated by X-Koffito-Backend-Key)
+API  ──service key─▶ Supabase Data API (system jobs only: matchmaking, venues, reminders)
+```
+
+- `src/lib/supabase.ts` holds the Supabase URL and publishable key only. On
+  iOS/Android the session is stored encrypted (`expo-secure-store` +
+  `AsyncStorage`, see `src/lib/secure-storage.ts`) and refreshed automatically.
+- `src/lib/api.ts` / `src/lib/api-client.ts` send every request with
+  `Authorization: Bearer <access_token>`, require HTTPS outside dev builds and,
+  on a 401, refresh the session once and retry.
+- `src/lib/koffito-api.ts` lists the endpoints; `src/lib/mappers.ts` turns the
+  API's JSON into the app's types.
+- The Supabase Data API refuses app clients: a PostgREST pre-request hook
+  (`private.check_request`) rejects `anon` / `authenticated` requests without
+  the backend's header, and `anon` has no grants at all.
+
+Environment (see `.env.example`):
+
+```
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+EXPO_PUBLIC_API_URL=
+```
+
+The backend lives in `backend/` (see its README); it belongs in the
+`Koffito-Backend` repository.
+
+Tests: `node --test test/*.mjs` (app) and `cd backend && pytest` (API).
+
 ## Get a fresh project
 
 When you're ready, run:

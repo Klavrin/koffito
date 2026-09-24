@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { Redirect } from "expo-router";
+import { useEffect, useState } from "react";
 import { View } from "react-native";
 
 import { CafePicker } from "@/components/events/cafe-picker";
@@ -6,23 +7,42 @@ import { combineDateTime, DayPicker, TimePicker } from "@/components/events/date
 import { FormField } from "@/components/events/form-field";
 import { Stepper } from "@/components/events/stepper";
 import { Screen } from "@/components/layout";
-import { Button, Card, Header, Input, Text, Toggle, useToast } from "@/components/ui";
+import { Button, Card, Header, Text, Toggle, useToast } from "@/components/ui";
 import { useEvents } from "@/context/events";
+import { useSession } from "@/context/session";
+import { errorMessage } from "@/lib/api-client";
+import { koffitoApi } from "@/lib/koffito-api";
+import { toCafe } from "@/lib/mappers";
 import { goBack } from "@/lib/navigation";
 import type { Cafe } from "@/types/koffito";
 
 export default function CreateEventPage() {
+  const { profile } = useSession();
   const { createEvent } = useEvents();
   const toast = useToast();
 
+  const [venues, setVenues] = useState<Cafe[]>([]);
   const [cafe, setCafe] = useState<Cafe>();
   const [day, setDay] = useState<Date>();
   const [time, setTime] = useState<string>();
-  const [website, setWebsite] = useState("");
-  const [phone, setPhone] = useState("");
   const [participants, setParticipants] = useState(4);
-  const [locationHidden, setLocationHidden] = useState(false);
+  const [locationHidden, setLocationHidden] = useState(true);
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!profile.isAdmin) return;
+    koffitoApi.admin
+      .venues()
+      .then((rows) => setVenues(rows.map(toCafe)))
+      .catch((caught: unknown) =>
+        toast.show({ title: "Couldn't load the cafés", message: errorMessage(caught), variant: "error" }),
+      );
+  }, [profile.isAdmin, toast]);
+
+  if (!profile.isAdmin) {
+    return <Redirect href="/" />;
+  }
 
   const errors = {
     cafe: cafe ? undefined : "Pick a coffee place first",
@@ -31,32 +51,32 @@ export default function CreateEventPage() {
   };
   const showError = (field: keyof typeof errors) => (submitted ? errors[field] : undefined);
 
-  // Picking a café pre-fills its contact details; they stay editable.
-  const handleCafeChange = (next: Cafe) => {
-    setCafe(next);
-    setWebsite(next.website ?? "");
-    setPhone(next.phone ?? "");
-  };
-
-  const handleSave = () => {
+  const handleSave = async () => {
     setSubmitted(true);
     if (!cafe || !day || !time) return;
 
-    createEvent({
-      cafe: { ...cafe, website: website.trim() || undefined, phone: phone.trim() || undefined },
-      date: combineDateTime(day, time),
-      maxParticipants: participants,
-      locationHidden,
-    });
-    toast.show({ title: "Coffee talk created!", message: `See you at ${cafe.name} ☕`, variant: "success" });
-    goBack();
+    setSaving(true);
+    try {
+      await createEvent({
+        eventAt: combineDateTime(day, time).toISOString(),
+        targetGroupSize: participants,
+        defaultVenueId: cafe.id,
+        locationHidden,
+      });
+      toast.show({ title: "Coffee talk created!", message: `See you at ${cafe.name} ☕`, variant: "success" });
+      goBack();
+    } catch (caught) {
+      toast.show({ title: "Couldn't create the coffee talk", message: errorMessage(caught), variant: "error" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <Screen
       header={<Header title="New event" subtitle="Set up a coffee talk" onBack={goBack} />}
-      footer={<Button title="Save" size="lg" fullWidth leftIcon="checkmark" onPress={handleSave} />}>
-      <CafePicker value={cafe} onChange={handleCafeChange} error={showError("cafe")} />
+      footer={<Button title="Save" size="lg" fullWidth leftIcon="checkmark" loading={saving} onPress={handleSave} />}>
+      <CafePicker cafes={venues} value={cafe} onChange={setCafe} error={showError("cafe")} />
 
       <FormField label="Date" error={showError("day")}>
         <DayPicker value={day} onChange={setDay} />
@@ -66,34 +86,15 @@ export default function CreateEventPage() {
         <TimePicker value={time} onChange={setTime} />
       </FormField>
 
-      <FormField label="Number of participants">
-        <Stepper value={participants} onChange={setParticipants} min={2} max={8} unit="participants" />
+      <FormField label="Group size">
+        <Stepper value={participants} onChange={setParticipants} min={2} max={8} unit="people per table" />
       </FormField>
-
-      <Input
-        label="Website"
-        placeholder="https://"
-        leftIcon="globe-outline"
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="url"
-        value={website}
-        onChangeText={setWebsite}
-      />
-      <Input
-        label="Phone number"
-        placeholder="+40 700 000 000"
-        leftIcon="call-outline"
-        keyboardType="phone-pad"
-        value={phone}
-        onChangeText={setPhone}
-      />
 
       <Card variant="filled" className="flex-row items-center gap-3">
         <View className="flex-1 gap-0.5">
           <Text variant="label">Keep the café a surprise 🤫</Text>
           <Text variant="caption" tone="muted">
-            Guests only see the location shortly before the meetup.
+            Guests only see the location a day before the meetup.
           </Text>
         </View>
         <Toggle accessibilityLabel="Keep the café a surprise" value={locationHidden} onValueChange={setLocationHidden} />

@@ -15,6 +15,7 @@ import { SurveyProgress } from "@/components/survey/survey-progress";
 import { SurveyStep } from "@/components/survey/survey-step";
 import { Button, Header, Text, useToast } from "@/components/ui";
 import { useSession } from "@/context/session";
+import { errorMessage } from "@/lib/api-client";
 import {
   interestQuestions,
   motivationQuestion,
@@ -50,6 +51,7 @@ export default function SurveyPage() {
   const toast = useToast();
 
   const [stepIndex, setStepIndex] = useState(0);
+  const [saving, setSaving] = useState(false);
   // Profile errors only appear once "Next" has been pressed, like the register form.
   const [submitted, setSubmitted] = useState(false);
   const [answers, setAnswers] = useState<SurveyAnswers>(profile.survey);
@@ -75,7 +77,7 @@ export default function SurveyPage() {
     goBack();
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     // Every profile detail is required, so surface what is missing instead of moving on.
     if (step.kind === "about" && !isProfileComplete(details))
       return setSubmitted(true);
@@ -83,7 +85,16 @@ export default function SurveyPage() {
     setSubmitted(false);
     if (!isLast) return setStepIndex(stepIndex + 1);
 
-    updateProfile({ ...details, avatar, survey: answers, onboarded: true });
+    setSaving(true);
+    try {
+      // Details go to /me, answers to /me/survey; the backend marks the profile onboarded.
+      await updateProfile(retake ? { survey: answers } : { ...details, avatar, survey: answers });
+    } catch (caught) {
+      toast.show({ title: "Couldn't save your answers", message: errorMessage(caught), variant: "error" });
+      return;
+    } finally {
+      setSaving(false);
+    }
 
     if (retake) {
       toast.show({
@@ -120,6 +131,7 @@ export default function SurveyPage() {
           fullWidth
           rightIcon={isLast ? undefined : "arrow-forward"}
           disabled={!canContinue}
+          loading={saving}
           onPress={handleNext}
         />
       }

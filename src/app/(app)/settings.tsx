@@ -6,16 +6,26 @@ import {
   SettingsRow,
   SettingsSection,
 } from "@/components/settings/settings-section";
-import { Header, Modal, Text } from "@/components/ui";
+import { Header, Modal, Text, useToast } from "@/components/ui";
 import { useSession } from "@/context/session";
+import { errorMessage } from "@/lib/api-client";
 import { goBack } from "@/lib/navigation";
+import type { UserSettings } from "@/types/koffito";
 
 export default function SettingsPage() {
-  const { signOut } = useSession();
+  const { profile, signOut, updateSettings } = useSession();
+  const toast = useToast();
 
-  const [notifications, setNotifications] = useState(true);
-  const [reminders, setReminders] = useState(true);
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const settings = profile.settings ?? { notificationsEnabled: true, remindersEnabled: true };
+
+  const toggle = (key: keyof UserSettings) => async (value: boolean) => {
+    try {
+      await updateSettings({ [key]: value });
+    } catch (caught) {
+      toast.show({ title: "Couldn't save that", message: errorMessage(caught), variant: "error" });
+    }
+  };
 
   return (
     <Screen header={<Header title="Settings" onBack={goBack} />}>
@@ -41,15 +51,32 @@ export default function SettingsPage() {
           icon="notifications-outline"
           label="Notifications"
           description="Opportunities, event updates and more"
-          toggle={{ value: notifications, onChange: setNotifications }}
+          toggle={{ value: settings.notificationsEnabled, onChange: toggle("notificationsEnabled") }}
         />
         <SettingsRow
           icon="alarm-outline"
           label="Coffee talk reminders"
           description="A nudge before each meetup"
-          toggle={{ value: reminders, onChange: setReminders }}
+          toggle={{ value: settings.remindersEnabled, onChange: toggle("remindersEnabled") }}
         />
       </SettingsSection>
+
+      {profile.isAdmin && (
+        <SettingsSection title="Admin">
+          <SettingsRow
+            icon="shield-checkmark-outline"
+            label="Reports"
+            description="Review what people flagged"
+            onPress={() => router.push("/admin")}
+          />
+          <SettingsRow
+            icon="add-circle-outline"
+            label="Create meetup"
+            description="Schedule a new coffee talk"
+            onPress={() => router.push("/create-event")}
+          />
+        </SettingsSection>
+      )}
 
       <SettingsSection title="Support">
         <SettingsRow

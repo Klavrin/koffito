@@ -11,6 +11,7 @@ import {
 } from "@/components/profile/profile-fields";
 import { Button, Header, Input, Modal, useToast } from "@/components/ui";
 import { useSession } from "@/context/session";
+import { errorMessage } from "@/lib/api-client";
 import { goBack } from "@/lib/navigation";
 import { validateRequired } from "@/lib/validation";
 
@@ -25,6 +26,7 @@ export default function MyProfilePage() {
 
   const [draft, setDraft] = useState(saved);
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const nameError = validateRequired(
     draft.firstName,
@@ -33,10 +35,17 @@ export default function MyProfilePage() {
   const detailErrors = validateProfileFields(draft);
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
 
-  const handleSave = () => {
-    updateProfile({ ...draft, firstName: draft.firstName.trim() });
-    toast.show({ title: "Profile saved", variant: "success" });
-    goBack();
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateProfile({ ...draft, firstName: draft.firstName.trim() });
+      toast.show({ title: "Profile saved", variant: "success" });
+      goBack();
+    } catch (caught) {
+      toast.show({ title: "Couldn't save your profile", message: errorMessage(caught), variant: "error" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Don't silently drop edits when leaving.
@@ -51,6 +60,7 @@ export default function MyProfilePage() {
           size="lg"
           fullWidth
           disabled={!dirty || !!nameError || !isProfileComplete(draft)}
+          loading={saving}
           onPress={handleSave}
         />
       }

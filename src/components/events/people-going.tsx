@@ -1,7 +1,7 @@
 import { Pressable, View } from "react-native";
 
 import { AvatarGroup, Icon, Text } from "@/components/ui";
-import { toAvatarPeople } from "@/data/users";
+import { toAvatarPeople } from "@/lib/people";
 import type { User } from "@/types/koffito";
 
 export type PeopleGoingProps = {

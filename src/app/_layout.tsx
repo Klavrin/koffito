@@ -7,8 +7,11 @@ import {
 } from "@expo-google-fonts/nunito";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import type React from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+import { Screen } from "@/components/layout";
+import { Button, ErrorState } from "@/components/ui";
 import { ToastProvider } from "@/components/ui/toast";
 import { EventsProvider } from "@/context/events";
 import { SessionProvider, useSession } from "@/context/session";
@@ -38,9 +41,9 @@ export default function RootLayout() {
       <KoffitoThemeProvider>
         <ToastProvider>
           <SessionProvider>
-            <EventsProvider>
+            <ScopedEventsProvider>
               <RootNavigator />
-            </EventsProvider>
+            </ScopedEventsProvider>
           </SessionProvider>
         </ToastProvider>
       </KoffitoThemeProvider>
@@ -48,10 +51,32 @@ export default function RootLayout() {
   );
 }
 
+/** Remounts the events store per signed-in user so nothing leaks between accounts. */
+function ScopedEventsProvider({ children }: { children: React.ReactNode }) {
+  const { session } = useSession();
+  return <EventsProvider key={session?.user.id ?? "signed-out"}>{children}</EventsProvider>;
+}
+
 function RootNavigator() {
-  const { session, isLoading } = useSession();
+  const { session, isLoading, profileStatus, profileError, reloadProfile, signOut } = useSession();
 
   if (isLoading) return null;
+
+  // Signed in, but the profile hasn't come back from the API yet.
+  if (session && profileStatus === "loading") return null;
+
+  if (session && profileStatus === "error") {
+    return (
+      <Screen contentClassName="flex-1 justify-center gap-4">
+        <ErrorState
+          title="We couldn't reach the coffee bar"
+          description={profileError}
+          onRetry={reloadProfile}
+        />
+        <Button title="Log out" variant="ghost" onPress={signOut} />
+      </Screen>
+    );
+  }
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

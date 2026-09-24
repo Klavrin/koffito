@@ -5,15 +5,14 @@ import { CafeVisitedCard } from "@/components/home/cafe-visited-card";
 import { NextCoffeeCard } from "@/components/home/next-coffee-card";
 import { Screen, Section } from "@/components/layout";
 import { EmojiAvatar } from "@/components/profile/emoji-avatar";
-import { Button, Header, IconButton } from "@/components/ui";
+import { Button, Header, IconButton, Text } from "@/components/ui";
 import { useEvents } from "@/context/events";
 import { useSession } from "@/context/session";
-import { visitedCafes } from "@/data/cafes";
-import { isUpcoming } from "@/data/events";
+import { isUpcoming } from "@/lib/events";
 
 export default function HomePage() {
   const { profile } = useSession();
-  const { events } = useEvents();
+  const { events, visitedCafes } = useEvents();
 
   // Fresh accounts finish the survey before seeing Home.
   if (!profile.onboarded) {
@@ -66,30 +65,44 @@ export default function HomePage() {
         onPress={() => router.push("/find-coffee-talk")}
       />
 
+      {profile.isAdmin && (
+        <Button
+          title="Create meetup"
+          variant="secondary"
+          fullWidth
+          leftIcon="add-circle-outline"
+          onPress={() => router.push("/create-event")}
+        />
+      )}
+
       <Section
         title="Cafés you've visited"
         actionLabel="Find more"
         onAction={() => router.push("/find-coffee-talk")}
       >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="-mx-5"
-          contentContainerClassName="gap-3 px-5 py-2"
-        >
-          {visitedCafes.map((cafe) => (
-            <CafeVisitedCard
-              key={cafe.id}
-              cafe={cafe}
-              onPress={() =>
-                router.push({
-                  pathname: "/event-details",
-                  params: { cafeId: cafe.id },
-                })
-              }
-            />
-          ))}
-        </ScrollView>
+        {visitedCafes.length === 0 ? (
+          <Text tone="muted">Your first coffee talk will put a café here ☕</Text>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="-mx-5"
+            contentContainerClassName="gap-3 px-5 py-2"
+          >
+            {visitedCafes.map((cafe) => (
+              <CafeVisitedCard
+                key={cafe.id}
+                cafe={cafe}
+                onPress={() =>
+                  router.push({
+                    pathname: "/event-details",
+                    params: { cafeId: cafe.id },
+                  })
+                }
+              />
+            ))}
+          </ScrollView>
+        )}
       </Section>
     </Screen>
   );

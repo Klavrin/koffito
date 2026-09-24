@@ -4,8 +4,8 @@ import Animated, { FadeIn } from "react-native-reanimated";
 
 import { MeetupStatus } from "@/components/koffito";
 import { AvatarGroup, Badge, Button, Card, Icon, Text } from "@/components/ui";
-import { formatAttendance, getCafeLabel, getEventState } from "@/data/events";
-import { toAvatarPeople } from "@/data/users";
+import { formatAttendance, getCafeLabel, getConfirmationStage, getEventState } from "@/lib/events";
+import { toAvatarPeople } from "@/lib/people";
 import { cn } from "@/lib/cn";
 import { formatDateTime, formatRelativeDay } from "@/lib/date";
 import { motion } from "@/theme/tokens";
@@ -22,14 +22,17 @@ export type EventCardProps = {
   onConfirm?: (happened: boolean) => void;
   /** Opens the review sheet for a past coffee talk that happened. */
   onReview?: () => void;
+  /** "I'm coming" confirmation, 24h and again 3h before the meetup. */
+  onConfirmComing?: (stage: "24h" | "3h") => void;
 };
 
 /**
  * List card for a coffee talk. The layout is shared; what changes per state is
  * the photo, the location line and the footer — see `getEventState`.
  */
-export function EventCard({ event, onPress, animateIn, onConfirm, onReview }: EventCardProps) {
+export function EventCard({ event, onPress, animateIn, onConfirm, onReview, onConfirmComing }: EventCardProps) {
   const state = getEventState(event);
+  const confirmStage = getConfirmationStage(event);
   const locked = state.kind === "mystery" || state.kind === "awaiting-reveal";
   // The café is sitting there waiting to be opened, so this card asks for attention.
   const ready = state.kind === "awaiting-reveal";
@@ -94,6 +97,21 @@ export function EventCard({ event, onPress, animateIn, onConfirm, onReview }: Ev
         </View>
         {ready ? <Badge label="Tap to reveal" variant="primary" icon="lock-open-outline" /> : <MeetupStatus status={event.status} />}
       </View>
+
+      {confirmStage && onConfirmComing && (
+        <View className="gap-2 border-t border-border pt-3">
+          <Text variant="label">
+            {confirmStage === "24h" ? "Still coming tomorrow?" : "Still coming? It's in a few hours"}
+          </Text>
+          <Button
+            title="Yes, I'm coming"
+            size="sm"
+            fullWidth
+            leftIcon="checkmark-circle-outline"
+            onPress={() => onConfirmComing(confirmStage)}
+          />
+        </View>
+      )}
 
       {state.kind === "past" && state.needsConfirm && onConfirm && (
         <View className="gap-2 border-t border-border pt-3">

@@ -3,18 +3,19 @@ import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { BottomSheet, Icon, Text } from "@/components/ui";
-import { cafes } from "@/data/cafes";
 import { cn } from "@/lib/cn";
 import type { Cafe } from "@/types/koffito";
 
 export type CafePickerProps = {
+  /** Cafés to choose from (active venues from the API). */
+  cafes: Cafe[];
   value?: Cafe;
   onChange: (cafe: Cafe) => void;
   error?: string;
 };
 
 /** "Choose coffee place" field: shows the picked café and opens a sheet with the options. */
-export function CafePicker({ value, onChange, error }: CafePickerProps) {
+export function CafePicker({ cafes, value, onChange, error }: CafePickerProps) {
   const [open, setOpen] = useState(false);
 
   return (

@@ -8,22 +8,26 @@ import {
   Button,
   Card,
   EmptyState,
+  ErrorState,
   Header,
   Icon,
+  Skeleton,
   Text,
   useToast,
 } from "@/components/ui";
 import { useEvents } from "@/context/events";
-import { isUpcoming } from "@/data/events";
+import { errorMessage } from "@/lib/api-client";
 import { dayKey, formatDate, formatTime } from "@/lib/date";
+import { isUpcoming } from "@/lib/events";
 import { goBack } from "@/lib/navigation";
 
 export default function FindCoffeeTalkPage() {
-  const { events, joinEvent, leaveEvent } = useEvents();
+  const { openEvents, status, error, refresh, joinEvent, leaveEvent } = useEvents();
   const toast = useToast();
   const [selectedDay, setSelectedDay] = useState<string>();
+  const [busy, setBusy] = useState<string | null>(null);
 
-  const available = events
+  const available = openEvents
     .filter(isUpcoming)
     .sort((a, b) => a.date.getTime() - b.date.getTime());
   const joinedCount = available.filter((event) => event.joined).length;
@@ -34,23 +38,37 @@ export default function FindCoffeeTalkPage() {
     ? available.filter((event) => dayKey(event.date) === selectedDay)
     : available;
 
-  const handleJoin = (eventId: string) => {
-    joinEvent(eventId);
-    toast.show({
-      title: "Event joined",
-      message:
-        "Your spot is saved. The café and guests will be revealed closer to the meetup.",
-      variant: "success",
-    });
+  const handleJoin = async (eventId: string) => {
+    setBusy(eventId);
+    try {
+      await joinEvent(eventId);
+      toast.show({
+        title: "Event joined",
+        message:
+          "Your spot is saved. The café and guests will be revealed closer to the meetup.",
+        variant: "success",
+      });
+    } catch (caught) {
+      toast.show({ title: "Couldn't join", message: errorMessage(caught), variant: "error" });
+    } finally {
+      setBusy(null);
+    }
   };
 
-  const handleCancel = (eventId: string) => {
-    leaveEvent(eventId);
-    toast.show({
-      title: "Event cancelled",
-      message: "You can join another time whenever you are ready.",
-      variant: "info",
-    });
+  const handleCancel = async (eventId: string) => {
+    setBusy(eventId);
+    try {
+      await leaveEvent(eventId);
+      toast.show({
+        title: "Event cancelled",
+        message: "You can join another time whenever you are ready.",
+        variant: "info",
+      });
+    } catch (caught) {
+      toast.show({ title: "Couldn't cancel", message: errorMessage(caught), variant: "error" });
+    } finally {
+      setBusy(null);
+    }
   };
 
   return (
@@ -63,7 +81,14 @@ export default function FindCoffeeTalkPage() {
         />
       }
     >
-      {available.length === 0 ? (
+      {status === "loading" ? (
+        <View className="gap-4">
+          <Skeleton height={220} className="rounded-3xl" />
+          <Skeleton height={180} className="rounded-3xl" />
+        </View>
+      ) : status === "error" ? (
+        <ErrorState description={error} onRetry={refresh} className="flex-1 justify-center" />
+      ) : available.length === 0 ? (
         <EmptyState
           emoji="☕"
           title="No coffee talks available"
@@ -76,7 +101,7 @@ export default function FindCoffeeTalkPage() {
           {joinedCount > 0 && (
             <Card padding="sm" className="border border-primary">
               <Text variant="label" tone="primary">
-                You've joined {joinedCount} coffee talk
+                You&apos;ve joined {joinedCount} coffee talk
                 {joinedCount === 1 ? "" : "s"}
               </Text>
             </Card>
@@ -124,6 +149,7 @@ export default function FindCoffeeTalkPage() {
             ) : (
               visibleEvents.map((event, index) => {
                 const joined = event.joined;
+                const full = !joined && event.spotsLeft !== undefined && event.spotsLeft <= 0;
 
                 return (
                   <Card
@@ -158,6 +184,11 @@ export default function FindCoffeeTalkPage() {
                           <Text variant="heading">
                             {formatDate(event.date)}
                           </Text>
+                          {event.spotsLeft !== undefined && (
+                            <Text variant="caption" tone="muted">
+                              {full ? "No seats left" : `${event.spotsLeft} seat${event.spotsLeft === 1 ? "" : "s"} left`}
+                            </Text>
+                          )}
                         </View>
                         <View className="items-end gap-0.5">
                           <Text variant="label">{formatTime(event.date)}</Text>
@@ -171,6 +202,8 @@ export default function FindCoffeeTalkPage() {
                         title={joined ? "Cancel event" : "Join event"}
                         variant={joined ? "outline" : "primary"}
                         fullWidth
+                        disabled={full}
+                        loading={busy === event.id}
                         onPress={() =>
                           joined ? handleCancel(event.id) : handleJoin(event.id)
                         }

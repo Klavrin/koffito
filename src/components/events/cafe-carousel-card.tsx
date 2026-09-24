@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import { Pressable, View } from "react-native";
 
 import { AvatarGroup, Button, Card, Text } from "@/components/ui";
-import { toAvatarPeople } from "@/data/users";
+import { toAvatarPeople } from "@/lib/people";
 import { formatDateTime } from "@/lib/date";
 import type { CoffeeEvent } from "@/types/koffito";
 

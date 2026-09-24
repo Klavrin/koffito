@@ -1,11 +1,15 @@
-import { useState } from "react";
+import { Redirect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import { ScrollView, View } from "react-native";
 
 import { ReportCard, reportStatusConfig } from "@/components/admin/report-card";
 import { Screen } from "@/components/layout";
-import { Badge, BottomSheet, Button, Chip, EmptyState, Header, Text, useToast } from "@/components/ui";
-import { reports as initialReports } from "@/data/reports";
+import { Badge, BottomSheet, Button, Chip, EmptyState, ErrorState, Header, Skeleton, Text, useToast } from "@/components/ui";
+import { useSession } from "@/context/session";
+import { errorMessage } from "@/lib/api-client";
 import { formatDate } from "@/lib/date";
+import { koffitoApi } from "@/lib/koffito-api";
+import { shortId, toReport } from "@/lib/mappers";
 import { goBack } from "@/lib/navigation";
 import type { Report, ReportStatus } from "@/types/koffito";
 
@@ -19,20 +23,61 @@ const filters: { key: Filter; label: string }[] = [
 ];
 
 export default function AdminPage() {
+  const { profile } = useSession();
   const toast = useToast();
 
-  const [reports, setReports] = useState(initialReports);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [error, setError] = useState<string>();
   const [filter, setFilter] = useState<Filter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(
+    () =>
+      koffitoApi.admin
+        .reports()
+        .then((rows) => {
+          setReports(rows.map(toReport));
+          setError(undefined);
+          setStatus("ready");
+        })
+        .catch((caught: unknown) => {
+          setError(errorMessage(caught));
+          setStatus("error");
+        }),
+    [],
+  );
+
+  const retry = () => {
+    setStatus("loading");
+    void load();
+  };
+
+  useEffect(() => {
+    if (profile.isAdmin) void load();
+  }, [load, profile.isAdmin]);
+
+  if (!profile.isAdmin) {
+    return <Redirect href="/" />;
+  }
 
   const visible = reports.filter((report) => filter === "all" || report.status === filter);
   const selected = reports.find((report) => report.id === selectedId);
   const openCount = reports.filter((report) => report.status === "open").length;
 
-  const setStatus = (report: Report, status: ReportStatus) => {
-    setReports((current) => current.map((item) => (item.id === report.id ? { ...item, status } : item)));
-    setSelectedId(null);
-    toast.show({ title: `Report #${report.id} marked as ${reportStatusConfig[status].label.toLowerCase()}`, variant: "success" });
+  const setReportStatus = async (report: Report, nextStatus: ReportStatus) => {
+    setSaving(true);
+    try {
+      const updated = toReport(await koffitoApi.admin.updateReport(report.id, nextStatus));
+      setReports((current) => current.map((item) => (item.id === report.id ? updated : item)));
+      setSelectedId(null);
+      toast.show({ title: `Report #${shortId(report.id)} marked as ${reportStatusConfig[nextStatus].label.toLowerCase()}`, variant: "success" });
+    } catch (caught) {
+      toast.show({ title: "Couldn't update the report", message: errorMessage(caught), variant: "error" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -45,7 +90,14 @@ export default function AdminPage() {
         ))}
       </ScrollView>
 
-      {visible.length === 0 ? (
+      {status === "loading" ? (
+        <View className="gap-4">
+          <Skeleton height={120} className="rounded-3xl" />
+          <Skeleton height={120} className="rounded-3xl" />
+        </View>
+      ) : status === "error" ? (
+        <ErrorState description={error} onRetry={retry} className="flex-1 justify-center" />
+      ) : visible.length === 0 ? (
         <EmptyState emoji="🧹" title="Nothing to review" description="No reports here — the coffee talks are going well." className="flex-1 justify-center" />
       ) : (
         visible.map((report, index) => (
@@ -53,7 +105,7 @@ export default function AdminPage() {
         ))
       )}
 
-      <BottomSheet visible={!!selected} onClose={() => setSelectedId(null)} title={selected ? `Report #${selected.id}` : undefined}>
+      <BottomSheet visible={!!selected} onClose={() => setSelectedId(null)} title={selected ? `Report #${shortId(selected.id)}` : undefined}>
         {selected && (
           <View className="gap-4 pb-6">
             <Badge
@@ -71,7 +123,7 @@ export default function AdminPage() {
             </Text>
 
             {selected.status === "open" && (
-              <Button title="Start review" leftIcon="eye-outline" fullWidth onPress={() => setStatus(selected, "reviewing")} />
+              <Button title="Start review" leftIcon="eye-outline" fullWidth loading={saving} onPress={() => setReportStatus(selected, "reviewing")} />
             )}
             {selected.status !== "resolved" ? (
               <Button
@@ -79,10 +131,11 @@ export default function AdminPage() {
                 variant={selected.status === "open" ? "secondary" : "primary"}
                 leftIcon="checkmark-circle-outline"
                 fullWidth
-                onPress={() => setStatus(selected, "resolved")}
+                loading={saving}
+                onPress={() => setReportStatus(selected, "resolved")}
               />
             ) : (
-              <Button title="Reopen" variant="outline" leftIcon="refresh" fullWidth onPress={() => setStatus(selected, "open")} />
+              <Button title="Reopen" variant="outline" leftIcon="refresh" fullWidth loading={saving} onPress={() => setReportStatus(selected, "open")} />
             )}
           </View>
         )}

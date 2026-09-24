@@ -6,6 +6,9 @@ import { OptionList } from "@/components/survey/option-list";
 import { Button, Card, Header, Input, Text, useToast } from "@/components/ui";
 import { useEvents } from "@/context/events";
 import { reportReasons } from "@/data/reports";
+import { errorMessage } from "@/lib/api-client";
+import { getCafeLabel } from "@/lib/events";
+import { koffitoApi } from "@/lib/koffito-api";
 import { goBack } from "@/lib/navigation";
 
 const MIN_DETAILS = 10;
@@ -26,20 +29,28 @@ export default function ReportPage() {
       ? undefined
       : "A sentence or two helps us understand what happened";
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setSubmitted(true);
     if (reason.length === 0 || detailsError) return;
 
     setSending(true);
-    // Stand-in for the real request.
-    setTimeout(() => {
+    try {
+      await koffitoApi.createReport({
+        reason: reason[0],
+        details: details.trim(),
+        eventId: event?.id,
+      });
       toast.show({
         title: "Report sent",
         message: "Thank you - our team will take a look.",
         variant: "success",
       });
       goBack();
-    }, 600);
+    } catch (caught) {
+      toast.show({ title: "Couldn't send the report", message: errorMessage(caught), variant: "error" });
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -47,7 +58,7 @@ export default function ReportPage() {
       header={
         <Header
           title="Report"
-          subtitle={event ? `Coffee talk at ${event.cafe.name}` : undefined}
+          subtitle={event ? `Coffee talk at ${getCafeLabel(event)}` : undefined}
           onBack={goBack}
         />
       }

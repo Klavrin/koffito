@@ -21,9 +21,9 @@ import {
   useToast,
 } from "@/components/ui";
 import { useEvents } from "@/context/events";
-import { getCafe } from "@/data/cafes";
-import { getEventState, getRevealTime, isUpcoming } from "@/data/events";
+import { errorMessage } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/date";
+import { getConfirmationStage, getEventState, getRevealTime, isUpcoming } from "@/lib/events";
 import { goBack } from "@/lib/navigation";
 import { motion } from "@/theme/tokens";
 
@@ -33,14 +33,15 @@ export default function EventDetailsPage() {
     id?: string;
     cafeId?: string;
   }>();
-  const { getEvent, joinEvent, cancelEvent, revealEvent } = useEvents();
+  const { getEvent, visitedCafes, joinEvent, leaveEvent, confirmEvent, revealEvent } = useEvents();
   const toast = useToast();
 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [peopleOpen, setPeopleOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const event = getEvent(id);
-  const cafe = event?.cafe ?? getCafe(cafeId);
+  const cafe = event?.cafe ?? visitedCafes.find((item) => item.id === cafeId);
 
   if (!cafe) {
     return (
@@ -61,9 +62,13 @@ export default function EventDetailsPage() {
   const upcoming = !!event && isUpcoming(event);
   const state = event ? getEventState(event) : undefined;
   const hidden = state?.kind === "mystery" || state?.kind === "awaiting-reveal";
+  const confirmStage = event ? getConfirmationStage(event) : undefined;
   const spotsLeft = event
-    ? event.maxParticipants - event.participants.length
+    ? (event.spotsLeft ?? event.maxParticipants - event.participants.length)
     : 0;
+
+  const fail = (title: string, caught: unknown) =>
+    toast.show({ title, message: errorMessage(caught), variant: "error" });
 
   const openReport = () =>
     router.push({
@@ -71,37 +76,86 @@ export default function EventDetailsPage() {
       params: event ? { eventId: event.id } : {},
     });
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     if (!event) return;
-    cancelEvent(event.id);
-    setCancelOpen(false);
-    toast.show({
-      title: "Coffee talk cancelled",
-      message: "Maybe next time.",
-      variant: "info",
-    });
-    goBack();
+    setBusy(true);
+    try {
+      await leaveEvent(event.id);
+      setCancelOpen(false);
+      toast.show({
+        title: "Coffee talk cancelled",
+        message: "Maybe next time.",
+        variant: "info",
+      });
+      goBack();
+    } catch (caught) {
+      setCancelOpen(false);
+      fail("Couldn't cancel", caught);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleJoin = () => {
+  const handleJoin = async () => {
     if (!event) return;
-    joinEvent(event.id);
-    toast.show({
-      title: "You're in!",
-      message: `We saved you a seat at ${cafe.name}`,
-      variant: "success",
-    });
+    setBusy(true);
+    try {
+      await joinEvent(event.id);
+      toast.show({
+        title: "You're in!",
+        message: "We saved you a seat. The café is revealed a day before.",
+        variant: "success",
+      });
+    } catch (caught) {
+      fail("Couldn't join", caught);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleConfirmComing = async () => {
+    if (!event || !confirmStage) return;
+    setBusy(true);
+    try {
+      await confirmEvent(event.id, confirmStage);
+      toast.show({ title: "See you there! ☕", variant: "success" });
+    } catch (caught) {
+      fail("Couldn't confirm", caught);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleReveal = async () => {
+    if (!event) return;
+    try {
+      await revealEvent(event.id);
+    } catch (caught) {
+      fail("Couldn't open the café", caught);
+    }
   };
 
   const footer =
     !event || !upcoming ? undefined : event.joined ? (
-      <Button
-        title="Cancel coffee talk"
-        variant="destructive"
-        size="lg"
-        fullWidth
-        onPress={() => setCancelOpen(true)}
-      />
+      <View className="gap-2">
+        {confirmStage && (
+          <Button
+            title="Yes, I'm coming"
+            size="lg"
+            fullWidth
+            leftIcon="checkmark-circle-outline"
+            loading={busy}
+            onPress={handleConfirmComing}
+          />
+        )}
+        <Button
+          title="Cancel coffee talk"
+          variant={confirmStage ? "ghost" : "destructive"}
+          size="lg"
+          fullWidth
+          onPress={() => setCancelOpen(true)}
+        />
+      </View>
     ) : (
       <Button
         title="Join meeting"
@@ -109,6 +163,7 @@ export default function EventDetailsPage() {
         fullWidth
         leftIcon="cafe"
         disabled={spotsLeft <= 0}
+        loading={busy}
         onPress={handleJoin}
       />
     );
@@ -139,7 +194,7 @@ export default function EventDetailsPage() {
               title="Reveal the café"
               size="lg"
               leftIcon="lock-open-outline"
-              onPress={() => revealEvent(event.id)}
+              onPress={handleReveal}
             />
           </Animated.View>
         )}
@@ -183,7 +238,11 @@ export default function EventDetailsPage() {
             />
           ) : (
             <>
-              <InfoRow icon="location-outline" label={cafe.address} />
+              <InfoRow
+                icon="location-outline"
+                label={cafe.address}
+                onPress={cafe.mapsUrl ? () => Linking.openURL(cafe.mapsUrl!) : undefined}
+              />
               {cafe.website && (
                 <InfoRow
                   icon="globe-outline"
