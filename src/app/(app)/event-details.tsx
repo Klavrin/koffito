@@ -4,6 +4,7 @@ import { Linking, View } from "react-native";
 import Animated, { ZoomIn } from "react-native-reanimated";
 
 import { fetchVenue } from "@/api";
+import { ConfirmAttendanceCard } from "@/components/events/confirm-attendance-card";
 import { EventHero } from "@/components/events/event-hero";
 import { InfoRow } from "@/components/events/info-row";
 import { LocationCountdown } from "@/components/events/location-countdown";
@@ -26,7 +27,7 @@ import { useEvents } from "@/context/events";
 import { useResource } from "@/hooks/use-resource";
 import { formatDateTime } from "@/lib/date";
 import { describeError } from "@/lib/errors";
-import { getEventState, getSpotsLeft, isUpcoming } from "@/lib/events";
+import { getConfirmStage, getEventState, getSpotsLeft, isUpcoming } from "@/lib/events";
 import { goBack } from "@/lib/navigation";
 import { motion } from "@/theme/tokens";
 
@@ -36,7 +37,7 @@ export default function EventDetailsPage() {
     id?: string;
     cafeId?: string;
   }>();
-  const { getEvent, joinEvent, cancelEvent, revealEvent, loading } = useEvents();
+  const { getEvent, joinEvent, cancelEvent, revealEvent, confirmPresence, loading } = useEvents();
   const toast = useToast();
 
   const loadVenue = useCallback(() => fetchVenue(cafeId ?? ""), [cafeId]);
@@ -45,6 +46,8 @@ export default function EventDetailsPage() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [peopleOpen, setPeopleOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [revealing, setRevealing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const event = getEvent(id);
   const cafe = event?.cafe ?? venue.data;
@@ -78,6 +81,7 @@ export default function EventDetailsPage() {
   const state = event ? getEventState(event) : undefined;
   const hidden = state?.kind === "mystery" || state?.kind === "awaiting-reveal";
   const spotsLeft = event ? getSpotsLeft(event) : 0;
+  const confirmStage = event ? getConfirmStage(event) : undefined;
 
   const openReport = () =>
     router.push({
@@ -102,6 +106,33 @@ export default function EventDetailsPage() {
       setBusy(false);
       setCancelOpen(false);
       toast.show({ title: "Couldn't cancel", message: describeError(error), variant: "error" });
+    }
+  };
+
+  const handleReveal = async () => {
+    if (!event) return;
+
+    setRevealing(true);
+    try {
+      await revealEvent(event.id);
+    } catch (error) {
+      toast.show({ title: "Not just yet", message: describeError(error), variant: "error" });
+    } finally {
+      setRevealing(false);
+    }
+  };
+
+  const handleConfirmPresence = async () => {
+    if (!event || !confirmStage) return;
+
+    setConfirming(true);
+    try {
+      await confirmPresence(event.id, confirmStage);
+      toast.show({ title: "See you there!", message: "The group knows you're coming.", variant: "success" });
+    } catch (error) {
+      toast.show({ title: "Couldn't confirm", message: describeError(error), variant: "error" });
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -170,7 +201,8 @@ export default function EventDetailsPage() {
               title="Reveal the café"
               size="lg"
               leftIcon="lock-open-outline"
-              onPress={() => revealEvent(event.id)}
+              loading={revealing}
+              onPress={handleReveal}
             />
           </Animated.View>
         )}
@@ -199,6 +231,10 @@ export default function EventDetailsPage() {
               : "The café will be revealed a day before the meet up. Can you handle the suspense?"}
           </Text>
         </View>
+
+        {confirmStage && (
+          <ConfirmAttendanceCard stage={confirmStage} loading={confirming} onConfirm={handleConfirmPresence} />
+        )}
 
         <Card className="gap-3">
           {event && (

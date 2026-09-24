@@ -1,6 +1,7 @@
-import { createContext, type PropsWithChildren, useCallback, useContext, useState } from "react";
+import { createContext, type PropsWithChildren, useCallback, useContext } from "react";
 
 import {
+  confirmEvent,
   createEvent as createEventRequest,
   fetchMyEvents,
   fetchOpenEvents,
@@ -8,19 +9,17 @@ import {
   leaveEvent,
   type NewEvent,
   rateEvent,
+  reportAttendance,
+  revealEvent as revealEventRequest,
 } from "@/api";
 import { useResource } from "@/hooks/use-resource";
+import { isApiError } from "@/lib/api";
+import type { ConfirmStage } from "@/types/api";
 import type { CoffeeEvent } from "@/types/koffito";
 
 import { useSession } from "./session";
 
 type Review = { rating: number; comment: string };
-
-/**
- * What the user did on this device that the database does not store:
- * opening a revealed café, and saying a coffee talk fell through.
- */
-type LocalEventState = Partial<Pick<CoffeeEvent, "revealOpened" | "attendance" | "review">>;
 
 type EventsContextValue = {
   /** Every coffee talk the user can see: the ones they joined plus the open ones. */
@@ -35,10 +34,12 @@ type EventsContextValue = {
   leaveEvent: (id: string) => Promise<void>;
   cancelEvent: (id: string) => Promise<void>;
   /** Opens a café whose reveal time has passed. */
-  revealEvent: (id: string) => void;
-  /** Records whether a past coffee talk happened. */
-  confirmAttendance: (id: string, happened: boolean) => void;
-  /** Stores the user's review (in the database when it happened), or their note about one that fell through. */
+  revealEvent: (id: string) => Promise<void>;
+  /** "I'll be there", at the 24h or 3h stage. */
+  confirmPresence: (id: string, stage: ConfirmStage) => Promise<void>;
+  /** Records whether a past coffee talk happened, with an optional note when it didn't. */
+  confirmAttendance: (id: string, happened: boolean, note?: string) => Promise<void>;
+  /** Stores the user's rating and comment for a coffee talk that happened. */
   reviewEvent: (id: string, review: Review) => Promise<void>;
 };
 
@@ -48,39 +49,33 @@ const none: CoffeeEvent[] = [];
 
 const loadEvents = async () => {
   const [mine, open] = await Promise.all([fetchMyEvents(), fetchOpenEvents()]);
-  // A joined talk shows up in both lists; the "mine" row carries the café and guests.
-  const seen = new Set(mine.map((event) => event.id));
-  return [...mine, ...open.filter((event) => !seen.has(event.id))];
+  const openById = new Map(open.map((event) => [event.id, event]));
+
+  // A joined talk shows up in both lists; the "mine" row carries the café and guests. A talk the
+  // user left still comes back as "mine", but the open row is the one that lets them re-join.
+  const merged = mine.map((event) => (!event.joined && openById.get(event.id)) || event);
+  const seen = new Set(merged.map((event) => event.id));
+  return [...merged, ...open.filter((event) => !seen.has(event.id))];
 };
 
-/** Loads the user's coffee talks from the database and layers on-device state over them. */
+/** Loads the user's coffee talks from the API; every action writes through and reloads. */
 export function EventsProvider({ children }: PropsWithChildren) {
   const { session } = useSession();
   const { data, loading, error, refresh } = useResource(loadEvents, !!session);
-  const [local, setLocal] = useState<Record<string, LocalEventState>>({});
 
-  const patch = useCallback(
-    (id: string, changes: LocalEventState) => setLocal((current) => ({ ...current, [id]: { ...current[id], ...changes } })),
-    [],
-  );
+  const events = data ?? none;
 
-  const events = data ? data.map((event) => (local[event.id] ? { ...event, ...local[event.id] } : event)) : none;
-
-  const joinEvent = useCallback(
-    async (id: string) => {
-      await joinEventRequest(id);
+  /** Runs an action against the API, then reloads so the list reflects the server's state. */
+  const act = useCallback(
+    async (action: () => Promise<unknown>) => {
+      await action();
       await refresh();
     },
     [refresh],
   );
 
-  const cancelEvent = useCallback(
-    async (id: string) => {
-      await leaveEvent(id);
-      await refresh();
-    },
-    [refresh],
-  );
+  const joinEvent = useCallback((id: string) => act(() => joinEventRequest(id)), [act]);
+  const cancelEvent = useCallback((id: string) => act(() => leaveEvent(id)), [act]);
 
   const createEvent = useCallback(
     async (event: NewEvent) => {
@@ -91,14 +86,45 @@ export function EventsProvider({ children }: PropsWithChildren) {
     [refresh],
   );
 
-  const reviewEvent = useCallback(
-    async (id: string, review: Review) => {
-      // Ratings live in the database; a missed coffee talk only gets a local note.
-      if (review.rating > 0) await rateEvent(id, review.rating, review.comment);
-      patch(id, { review });
-      if (review.rating > 0) await refresh();
+  const revealEvent = useCallback(
+    async (id: string) => {
+      try {
+        await revealEventRequest(id);
+      } catch (error) {
+        // Reveal times are decided by the server, so make sure the list agrees with it.
+        if (isApiError(error) && error.code === "not_revealed_yet") await refresh();
+        throw error;
+      }
+      await refresh();
     },
-    [patch, refresh],
+    [refresh],
+  );
+
+  const confirmPresence = useCallback(
+    async (id: string, stage: ConfirmStage) => {
+      try {
+        await confirmEvent(id, stage);
+      } catch (error) {
+        // Already confirmed (maybe on another device): the reload clears the prompt.
+        if (isApiError(error) && error.code === "nothing_to_confirm") {
+          await refresh();
+          return;
+        }
+        throw error;
+      }
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const confirmAttendance = useCallback(
+    (id: string, happened: boolean, note?: string) => act(() => reportAttendance(id, happened, note)),
+    [act],
+  );
+
+  const reviewEvent = useCallback(
+    (id: string, review: Review) => act(() => rateEvent(id, review.rating, review.comment || undefined)),
+    [act],
   );
 
   return (
@@ -113,8 +139,9 @@ export function EventsProvider({ children }: PropsWithChildren) {
         joinEvent,
         leaveEvent: cancelEvent,
         cancelEvent,
-        revealEvent: (id) => patch(id, { revealOpened: true }),
-        confirmAttendance: (id, happened) => patch(id, { attendance: happened ? "happened" : "missed" }),
+        revealEvent,
+        confirmPresence,
+        confirmAttendance,
         reviewEvent,
       }}
     >

@@ -34,10 +34,16 @@ export default function EventsPage() {
     router.push({ pathname: "/report", params: id ? { eventId: id } : {} });
   };
 
-  const handleConfirm = (id: string, happened: boolean) => {
-    confirmAttendance(id, happened);
-    if (happened) setReviewing(id);
-    else setMissed(id);
+  const handleConfirm = async (id: string, happened: boolean) => {
+    // A missed coffee talk is recorded together with the note from the sheet.
+    if (!happened) return setMissed(id);
+
+    try {
+      await confirmAttendance(id, true);
+      setReviewing(id);
+    } catch (confirmError) {
+      toast.show({ title: "Couldn't save that", message: describeError(confirmError), variant: "error" });
+    }
   };
 
   const handleReview = async (rating: number, comment: string) => {
@@ -54,9 +60,16 @@ export default function EventsPage() {
   };
 
   const handleMissed = async (comment: string) => {
-    if (missed) await reviewEvent(missed, { rating: 0, comment });
+    const id = missed;
     setMissed(null);
-    toast.show({ title: "Thanks for letting us know", variant: "info" });
+    if (!id) return;
+
+    try {
+      await confirmAttendance(id, false, comment.trim() || undefined);
+      toast.show({ title: "Thanks for letting us know", variant: "info" });
+    } catch (missedError) {
+      toast.show({ title: "Couldn't save that", message: describeError(missedError), variant: "error" });
+    }
   };
 
   const mine = events.filter((event) => event.joined);

@@ -5,7 +5,7 @@ import { MeetupStatus } from "@/components/koffito";
 import { AvatarGroup, Badge, Button, Card, Icon, Text } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { formatDateTime, formatRelativeDay } from "@/lib/date";
-import { formatAttendance, getCafeLabel, getEventState } from "@/lib/events";
+import { formatAttendance, getCafeLabel, getConfirmStage, getEventState } from "@/lib/events";
 import { toAvatarPeople } from "@/lib/people";
 import { motion } from "@/theme/tokens";
 import type { CoffeeEvent } from "@/types/koffito";
@@ -33,6 +33,8 @@ export function EventCard({ event, onPress, animateIn, onConfirm, onReview }: Ev
   const locked = state.kind === "mystery" || state.kind === "awaiting-reveal";
   // The café is sitting there waiting to be opened, so this card asks for attention.
   const ready = state.kind === "awaiting-reveal";
+  // Waiting for the user to say they're still coming.
+  const confirmStage = getConfirmStage(event);
 
   const locationLabel =
     state.kind === "mystery"
@@ -88,7 +90,13 @@ export function EventCard({ event, onPress, animateIn, onConfirm, onReview }: Ev
             {formatAttendance(event)}
           </Text>
         </View>
-        {ready ? <Badge label="Tap to reveal" variant="primary" icon="lock-open-outline" /> : <MeetupStatus status={event.status} />}
+        {ready ? (
+          <Badge label="Tap to reveal" variant="primary" icon="lock-open-outline" />
+        ) : confirmStage ? (
+          <Badge label="Confirm you're coming" variant="warning" icon="alarm-outline" />
+        ) : (
+          <MeetupStatus status={event.status} />
+        )}
       </View>
 
       {state.kind === "past" && state.needsConfirm && onConfirm && (
@@ -109,6 +117,14 @@ export function EventCard({ event, onPress, animateIn, onConfirm, onReview }: Ev
       {state.kind === "past" && state.needsReview && onReview && (
         <View className="border-t border-border pt-3">
           <Button title="Leave a review" variant="secondary" size="sm" fullWidth leftIcon="star-outline" onPress={onReview} />
+        </View>
+      )}
+
+      {event.attendance === "missed" && (
+        <View className="border-t border-border pt-3">
+          <Text variant="caption" tone="muted" numberOfLines={2}>
+            {event.attendanceNote ? `Didn't happen · ${event.attendanceNote}` : "Didn't happen"}
+          </Text>
         </View>
       )}
 

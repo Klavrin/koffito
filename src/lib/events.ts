@@ -1,6 +1,8 @@
+import type { ConfirmStage } from "@/types/api";
 import type { CoffeeEvent } from "@/types/koffito";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
 
 export const isUpcoming = (event: CoffeeEvent) =>
   event.date.getTime() > Date.now() && event.status !== "cancelled" && event.status !== "completed";
@@ -73,4 +75,21 @@ export const formatAttendance = (event: CoffeeEvent) => {
   const count = event.participants.length;
   const who = `${count} ${count === 1 ? "person" : "people"}`;
   return isUpcoming(event) ? `${who} going` : `${who} went`;
+};
+
+/**
+ * Which attendance confirmation a joined, upcoming coffee talk is waiting for: "24h" from a day
+ * before the meetup (unless already confirmed), "3h" from three hours before (unless confirmed
+ * at that stage). The API has no time window of its own, so this is the app's rule.
+ */
+export const getConfirmStage = (event: CoffeeEvent, now = Date.now()): ConfirmStage | undefined => {
+  if (!event.joined || event.status === "cancelled" || event.status === "completed") return undefined;
+
+  const untilStart = event.date.getTime() - now;
+  if (untilStart <= 0) return undefined;
+
+  const status = event.participantStatus;
+  if (untilStart <= 3 * HOUR_MS) return status === "confirmed_3h" ? undefined : "3h";
+  if (untilStart <= DAY_MS) return status === "joined" || status === "matched" ? "24h" : undefined;
+  return undefined;
 };
