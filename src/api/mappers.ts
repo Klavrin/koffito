@@ -1,12 +1,28 @@
 /**
- * Converts rows and JSON cards from the database into the app's domain types (and back).
- * Keeping every conversion here means screens never see snake_case or enum values.
+ * Converts the API's responses into the app's domain types (and edits back into request
+ * bodies). Keeping every conversion here means screens never see snake_case or enum values.
+ *
+ * Type-only imports keep this module runnable in Node for the unit tests.
  */
 import type { Interest } from "@/constants/interests";
-import type { Database, Json, Tables, TablesUpdate } from "@/types/database";
+import type {
+  AdminReport,
+  AdminVenue,
+  Gender,
+  MeResponse,
+  MeSettings,
+  MyEventResponse,
+  OpenEventResponse,
+  ProfileCard,
+  ProfilePatch,
+  SettingsPatch,
+  SettingsResponse,
+  VenueCard,
+} from "@/types/api";
 import type {
   Cafe,
   CoffeeEvent,
+  Me,
   MeetupStatusType,
   Profile,
   ProfileStats,
@@ -16,39 +32,7 @@ import type {
   User,
 } from "@/types/koffito";
 
-type Gender = Database["public"]["Enums"]["gender"];
-type MyEventRow = Database["public"]["Functions"]["get_my_events"]["Returns"][number];
-type OpenEventRow = Database["public"]["Functions"]["get_open_events"]["Returns"][number];
-
-/** Shape produced by the `profile_card()` database function. */
-export type ProfileCard = {
-  id: string;
-  name: string;
-  emoji: string | null;
-  gender: Gender | null;
-  age: number | null;
-  languages: string[];
-  occupation: string | null;
-  favoriteCoffee: string | null;
-  survey: SurveyAnswers;
-};
-
-/** `get_public_profile()` adds the person's coffee talk stats to their card. */
-export type PublicProfile = ProfileCard & { stats?: Partial<ProfileStats> };
-
-/** Shape produced by the `venue_card()` database function. */
-export type VenueCard = {
-  id: string;
-  name: string;
-  description: string;
-  photo: string | null;
-  address: string;
-  website: string | null;
-  phone: string | null;
-  mapsUrl: string | null;
-  rating: number | null;
-  popularTimes: number[];
-};
+export type { ProfileCard, VenueCard };
 
 const genderLabels: Record<Gender, string> = {
   female: "Female",
@@ -73,18 +57,6 @@ export const toGender = (label?: string) =>
 
 const isAnswers = (value: unknown): value is SurveyAnswers =>
   !!value && typeof value === "object" && !Array.isArray(value);
-
-/** Age in whole years for a `YYYY-MM-DD` date of birth. */
-export function ageFromBirthDate(dateOfBirth: string | null) {
-  if (!dateOfBirth) return undefined;
-
-  const [year, month, day] = dateOfBirth.split("-").map(Number);
-  const today = new Date();
-  let years = today.getFullYear() - year;
-  if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) years--;
-
-  return String(Math.max(years, 0));
-}
 
 /** The app only asks for an age, so store a birthday exactly that many years ago. */
 export function birthDateFromAge(age?: string) {
@@ -133,7 +105,8 @@ export function toCafe(card: VenueCard): Cafe {
   };
 }
 
-export function venueRowToCafe(row: Tables<"venues">): Cafe {
+/** Admin endpoints return the raw venue columns rather than a card. */
+export function venueRowToCafe(row: AdminVenue): Cafe {
   return toCafe({
     id: row.id,
     name: row.name,
@@ -150,27 +123,28 @@ export function venueRowToCafe(row: Tables<"venues">): Cafe {
 
 const meetupStatuses: MeetupStatusType[] = ["pending", "confirmed", "completed", "cancelled"];
 
-export function toMyEvent(row: MyEventRow): CoffeeEvent {
+export function toMyEvent(row: MyEventResponse): CoffeeEvent {
   const status = meetupStatuses.find((value) => value === row.status) ?? "pending";
-  const participants = Array.isArray(row.participants) ? (row.participants as unknown as ProfileCard[]) : [];
 
   return {
     id: row.id,
-    cafe: row.cafe ? toCafe(row.cafe as unknown as VenueCard) : undefined,
+    cafe: row.cafe ? toCafe(row.cafe) : undefined,
     date: new Date(row.event_at),
     revealAt: new Date(row.reveal_at),
-    participants: participants.map(toUser),
+    participants: (row.participants ?? []).map(toUser),
     maxParticipants: row.max_participants,
     status,
     joined: row.joined,
+    participantStatus: row.participant_status,
     locationHidden: row.location_hidden,
-    // The database keeps the rating; the comment is only known locally after it was sent.
-    review: row.my_rating ? { rating: row.my_rating, comment: "" } : undefined,
-    attendance: row.my_rating ? "happened" : undefined,
+    revealOpened: row.reveal_opened,
+    attendance: row.attended === true ? "happened" : row.attended === false ? "missed" : undefined,
+    attendanceNote: row.attendance_note ?? undefined,
+    review: row.my_rating ? { rating: row.my_rating, comment: row.my_comment ?? "" } : undefined,
   };
 }
 
-export function toOpenEvent(row: OpenEventRow): CoffeeEvent {
+export function toOpenEvent(row: OpenEventResponse): CoffeeEvent {
   return {
     id: row.id,
     date: new Date(row.event_at),
@@ -188,60 +162,72 @@ const splitName = (displayName: string) => {
   return { firstName, lastName: rest.join(" ") || undefined };
 };
 
-export function toProfile(row: Tables<"profiles">, survey: Json | null, email?: string): Profile {
+/** The signed-in user's profile from `GET /me`; the email only lives in the auth session. */
+export function toProfile(me: MeResponse, email?: string): Profile {
   return {
-    id: row.id,
-    ...splitName(row.display_name),
+    id: me.id,
+    ...splitName(me.name),
     email,
-    avatar: row.avatar_emoji ?? undefined,
-    gender: row.gender ? genderLabels[row.gender] : undefined,
-    age: ageFromBirthDate(row.date_of_birth),
-    occupation: row.occupation ?? undefined,
-    favoriteCoffee: row.favorite_coffee ?? undefined,
-    survey: isAnswers(survey) ? survey : {},
-    onboarded: !!row.onboarded_at,
-    isAdmin: row.is_admin,
+    avatar: me.emoji ?? undefined,
+    gender: me.gender ? genderLabels[me.gender] : undefined,
+    age: me.age != null ? String(me.age) : undefined,
+    occupation: me.occupation ?? undefined,
+    favoriteCoffee: me.favoriteCoffee ?? undefined,
+    survey: isAnswers(me.survey) ? me.survey : {},
+    onboarded: me.onboarded,
+    isAdmin: me.isAdmin,
   };
 }
 
-/** Only the columns present in `changes` are sent, so partial saves don't clear other fields. */
-export function toProfileUpdate(changes: Partial<Profile>, current: Profile): TablesUpdate<"profiles"> {
-  const update: TablesUpdate<"profiles"> = {};
-
-  if ("firstName" in changes || "lastName" in changes) {
-    const firstName = changes.firstName ?? current.firstName;
-    const lastName = "lastName" in changes ? changes.lastName : current.lastName;
-    update.display_name = [firstName, lastName].filter(Boolean).join(" ").trim();
-  }
-  if ("avatar" in changes) update.avatar_emoji = changes.avatar ?? null;
-  if ("gender" in changes) update.gender = toGender(changes.gender);
-  if ("age" in changes) update.date_of_birth = birthDateFromAge(changes.age);
-  if ("occupation" in changes) update.occupation = changes.occupation?.trim() || null;
-  if ("favoriteCoffee" in changes) update.favorite_coffee = changes.favoriteCoffee ?? null;
-  if (changes.onboarded && !current.onboarded) update.onboarded_at = new Date().toISOString();
-
-  return update;
+export function toMe(me: MeResponse, email?: string): Me {
+  return { profile: toProfile(me, email), stats: toStats(me.stats), settings: toSettings(me.settings) };
 }
 
-export function toSettings(row: Tables<"user_settings">): Settings {
+/** The profile columns as the API wants them, derived from the app's profile shape. */
+const profileFields = (profile: Profile) => ({
+  display_name: [profile.firstName, profile.lastName].filter(Boolean).join(" ").trim(),
+  avatar_emoji: profile.avatar ?? null,
+  gender: toGender(profile.gender),
+  date_of_birth: birthDateFromAge(profile.age),
+  occupation: profile.occupation?.trim() || null,
+  favorite_coffee: profile.favoriteCoffee ?? null,
+});
+
+/** Only the fields that actually change are sent, so partial saves never clear other fields. */
+export function toProfileUpdate(changes: Partial<Profile>, current: Profile): ProfilePatch {
+  const before = profileFields(current);
+  const after = profileFields({ ...current, ...changes });
+  const patch: ProfilePatch = {};
+
+  for (const key of Object.keys(after) as (keyof typeof after)[]) {
+    if (after[key] !== before[key]) (patch as Record<string, unknown>)[key] = after[key];
+  }
+  if (changes.onboarded && !current.onboarded) patch.onboarded = true;
+
+  return patch;
+}
+
+export function toSettings(settings: MeSettings): Settings {
+  return { notifications: settings.notificationsEnabled, reminders: settings.remindersEnabled };
+}
+
+export function settingsFromResponse(row: SettingsResponse): Settings {
   return { notifications: row.notifications_enabled, reminders: row.reminders_enabled };
 }
 
-export function toSettingsUpdate(changes: Partial<Settings>): TablesUpdate<"user_settings"> {
-  const update: TablesUpdate<"user_settings"> = {};
+export function toSettingsUpdate(changes: Partial<Settings>): SettingsPatch {
+  const update: SettingsPatch = {};
   if ("notifications" in changes) update.notifications_enabled = changes.notifications;
   if ("reminders" in changes) update.reminders_enabled = changes.reminders;
   return update;
 }
 
-export function toReport(row: Tables<"admin_reports">): Report | null {
-  if (!row.id || !row.reason || !row.status || !row.created_at) return null;
-
+export function toReport(row: AdminReport): Report {
   return {
     id: row.id,
     reason: row.reason,
-    details: row.details ?? "",
-    reportedBy: row.reported_by ?? "Unknown",
+    details: row.details,
+    reportedBy: row.reported_by || "Unknown",
     date: new Date(row.created_at),
     status: row.status,
   };

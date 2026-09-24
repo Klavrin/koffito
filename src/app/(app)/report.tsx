@@ -6,7 +6,6 @@ import { Screen, Section } from "@/components/layout";
 import { OptionList } from "@/components/survey/option-list";
 import { Button, Card, Header, Input, Text, useToast } from "@/components/ui";
 import { useEvents } from "@/context/events";
-import { useSession } from "@/context/session";
 import { reportReasons } from "@/data/reports";
 import { describeError } from "@/lib/errors";
 import { goBack } from "@/lib/navigation";
@@ -16,7 +15,6 @@ const MIN_DETAILS = 10;
 
 export default function ReportPage() {
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
-  const { profile } = useSession();
   const { getEvent } = useEvents();
   const toast = useToast();
 
@@ -33,11 +31,11 @@ export default function ReportPage() {
 
   const handleSubmit = async () => {
     setSubmitted(true);
-    if (reason.length === 0 || detailsError || !profile.id) return;
+    if (reason.length === 0 || detailsError) return;
 
     setSending(true);
     try {
-      await sendReport({ reporterId: profile.id, reason: reason[0] as ReportReason, details, eventId: event?.id });
+      await sendReport({ reason: reason[0] as ReportReason, details, eventId: event?.id });
       toast.show({
         title: "Report sent",
         message: "Thank you - our team will take a look.",

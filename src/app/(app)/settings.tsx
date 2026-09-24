@@ -1,7 +1,6 @@
 import { router } from "expo-router";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
-import { fetchSettings, saveSettings } from "@/api";
 import { Screen } from "@/components/layout";
 import {
   SettingsRow,
@@ -9,34 +8,22 @@ import {
 } from "@/components/settings/settings-section";
 import { Header, Modal, Text, useToast } from "@/components/ui";
 import { useSession } from "@/context/session";
-import { useResource } from "@/hooks/use-resource";
 import { describeError } from "@/lib/errors";
 import { goBack } from "@/lib/navigation";
 import type { Settings } from "@/types/koffito";
 
-const defaults: Settings = { notifications: true, reminders: true };
-
 export default function SettingsPage() {
-  const { profile, signOut } = useSession();
+  const { profile, settings, updateSettings, signOut } = useSession();
   const toast = useToast();
-
-  const userId = profile.id;
-  const loadSettings = useCallback(() => fetchSettings(userId ?? ""), [userId]);
-  const { data, setData } = useResource(loadSettings, !!userId);
-  const settings = data ?? defaults;
 
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
-  // Flip the switch right away and roll it back if the save fails.
+  // The switch flips right away; the session rolls it back if the save fails.
   const toggle = (key: keyof Settings) => async (value: boolean) => {
-    setData((current) => ({ ...(current ?? defaults), [key]: value }));
-    if (!userId) return;
-
     try {
-      await saveSettings(userId, { [key]: value });
+      await updateSettings({ [key]: value });
     } catch (error) {
-      setData((current) => ({ ...(current ?? defaults), [key]: !value }));
       toast.show({ title: "Couldn't save that", message: describeError(error), variant: "error" });
     }
   };

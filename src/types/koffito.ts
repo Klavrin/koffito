@@ -1,6 +1,7 @@
 import type { ImageSource } from "expo-image";
 
 import type { Interest } from "@/constants/interests";
+import type { ParticipantStatus } from "@/types/api";
 
 export type { Interest };
 
@@ -72,12 +73,16 @@ export type CoffeeEvent = {
   status: MeetupStatusType;
   /** Whether the signed-in user is part of this coffee talk. */
   joined: boolean;
+  /** The user's raw participation state, for talks they joined. */
+  participantStatus?: ParticipantStatus;
   /** Blind coffee talks keep the café secret until shortly before the meetup. */
   locationHidden?: boolean;
   /** Set once the user taps to open a café whose reveal time has passed. */
   revealOpened?: boolean;
   /** Set once the user confirms whether a past coffee talk actually happened. */
   attendance?: "happened" | "missed";
+  /** What the user said when a coffee talk fell through. */
+  attendanceNote?: string;
   /** The user's own review; only for coffee talks that happened. */
   review?: { rating: number; comment: string };
 };
@@ -123,4 +128,11 @@ export type ProfileStats = {
 export type Settings = {
   notifications: boolean;
   reminders: boolean;
+};
+
+/** Everything `GET /me` says about the signed-in user. */
+export type Me = {
+  profile: Profile;
+  stats: ProfileStats;
+  settings: Settings;
 };

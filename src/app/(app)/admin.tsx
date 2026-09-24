@@ -26,7 +26,7 @@ export default function AdminPage() {
   const { profile } = useSession();
   const toast = useToast();
 
-  const isAdmin = !!profile.isAdmin && !!profile.id;
+  const isAdmin = !!profile.isAdmin;
   const { data, loading, error, refresh, setData } = useResource(fetchReports, isAdmin);
   const reports = data ?? [];
 
@@ -47,11 +47,9 @@ export default function AdminPage() {
   const openCount = reports.filter((report) => report.status === "open").length;
 
   const setStatus = async (report: Report, status: ReportStatus) => {
-    if (!profile.id) return;
-
     setUpdating(true);
     try {
-      await updateReportStatus(report.id, status, profile.id);
+      await updateReportStatus(report.id, status);
       setData((current) => (current ?? []).map((item) => (item.id === report.id ? { ...item, status } : item)));
       setSelectedId(null);
       toast.show({ title: `Report #${shortReportId(report.id)} marked as ${reportStatusConfig[status].label.toLowerCase()}`, variant: "success" });

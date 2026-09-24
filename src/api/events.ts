@@ -1,30 +1,86 @@
-import { supabase } from "@/lib/supabase";
+import { api } from "@/lib/api";
+import type {
+  AdminEvent,
+  AdminEventCreate,
+  AdminVenue,
+  AttendanceBody,
+  ConfirmBody,
+  ConfirmStage,
+  MyEventResponse,
+  OpenEventResponse,
+  RatingBody,
+  RatingResponse,
+  VenueCard,
+} from "@/types/api";
 import type { Cafe, CoffeeEvent } from "@/types/koffito";
 
-import { toCafe, toMyEvent, toOpenEvent, type VenueCard, venueRowToCafe } from "./mappers";
+import { toCafe, toMyEvent, toOpenEvent, venueRowToCafe } from "./mappers";
 
 /** Coffee talks the user joined (past and upcoming), with café and guests once revealed. */
 export async function fetchMyEvents(): Promise<CoffeeEvent[]> {
-  const { data, error } = await supabase.rpc("get_my_events");
-  if (error) throw error;
-  return data.map(toMyEvent);
+  const rows = await api.get<MyEventResponse[]>("/me/events");
+  return rows.map(toMyEvent);
 }
 
 /** Upcoming coffee talks anyone can still join. */
 export async function fetchOpenEvents(): Promise<CoffeeEvent[]> {
-  const { data, error } = await supabase.rpc("get_open_events");
-  if (error) throw error;
-  return data.map(toOpenEvent);
+  const rows = await api.get<OpenEventResponse[]>("/events");
+  return rows.map(toOpenEvent);
 }
 
-export async function joinEvent(eventId: string) {
-  const { error } = await supabase.rpc("join_event", { p_event_id: eventId });
-  if (error) throw error;
+export function joinEvent(eventId: string) {
+  return api.post(`/events/${eventId}/join`);
 }
 
-export async function leaveEvent(eventId: string) {
-  const { error } = await supabase.rpc("leave_event", { p_event_id: eventId });
-  if (error) throw error;
+export function leaveEvent(eventId: string) {
+  return api.post(`/events/${eventId}/leave`);
+}
+
+/** Confirms the user is still coming, at the 24h or 3h reminder. */
+export function confirmEvent(eventId: string, stage: ConfirmStage) {
+  const body: ConfirmBody = { stage };
+  return api.post(`/events/${eventId}/confirm`, body);
+}
+
+/** Records that the user opened the revealed café, so it stays open. */
+export function revealEvent(eventId: string) {
+  return api.post(`/events/${eventId}/reveal`);
+}
+
+/** After the meetup: did it happen? An optional note explains what went wrong. */
+export function reportAttendance(eventId: string, happened: boolean, note?: string) {
+  const body: AttendanceBody = { happened };
+  if (note) body.note = note;
+  return api.post(`/events/${eventId}/attendance`, body);
+}
+
+/** Saves (or replaces) the user's rating for a coffee talk they attended. */
+export function rateEvent(eventId: string, rating: number, comment?: string) {
+  const body: RatingBody = { rating };
+  if (comment) body.comment = comment;
+  return api.put<RatingResponse>(`/events/${eventId}/rating`, body);
+}
+
+/** Cafés the user already had a coffee talk at, most recent first. */
+export async function fetchVisitedVenues(): Promise<Cafe[]> {
+  const cards = await api.get<VenueCard[]>("/me/venues");
+  return cards.map(toCafe);
+}
+
+/**
+ * One café the user has visited. The API has no single-venue endpoint for users
+ * (TODO backend: `GET /venues/{id}`), and this is only reached from "Cafés you've visited",
+ * so the visited list always contains it.
+ */
+export async function fetchVenue(venueId: string): Promise<Cafe | undefined> {
+  const visited = await fetchVisitedVenues();
+  return visited.find((cafe) => cafe.id === venueId);
+}
+
+/** Admins only: every active café, for picking where a coffee talk happens. */
+export async function fetchVenues(): Promise<Cafe[]> {
+  const rows = await api.get<AdminVenue[]>("/admin/venues");
+  return rows.map(venueRowToCafe).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export type NewEvent = {
@@ -36,53 +92,12 @@ export type NewEvent = {
 
 /** Admins only: opens a new coffee talk. Returns the new event id. */
 export async function createEvent(event: NewEvent) {
-  const { data, error } = await supabase.rpc("create_event", {
-    p_event_at: event.date.toISOString(),
-    p_default_venue_id: event.venueId,
-    p_target_group_size: event.groupSize,
-    p_location_hidden: event.locationHidden,
-  });
-  if (error) throw error;
-  return data;
-}
-
-/** Saves (or replaces) the signed-in user's rating for a coffee talk they attended. */
-export async function rateEvent(eventId: string, rating: number, comment: string) {
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) throw new Error("not_authenticated");
-
-  // Not an upsert: PostgREST would also `SET event_id, user_id`, which users have no grant for.
-  const updated = await supabase
-    .from("event_ratings")
-    .update({ rating, comment })
-    .eq("event_id", eventId)
-    .eq("user_id", auth.user.id)
-    .select("id");
-  if (updated.error) throw updated.error;
-
-  if (updated.data.length === 0) {
-    const { error } = await supabase.from("event_ratings").insert({ event_id: eventId, user_id: auth.user.id, rating, comment });
-    if (error) throw error;
-  }
-}
-
-/** One café, when the user is allowed to see it (revealed talk or admin). */
-export async function fetchVenue(venueId: string): Promise<Cafe | undefined> {
-  const { data, error } = await supabase.rpc("venue_card", { p_venue_id: venueId });
-  if (error) throw error;
-  return data ? toCafe(data as unknown as VenueCard) : undefined;
-}
-
-/** Cafés the user already had a coffee talk at, most recent first. */
-export async function fetchVisitedVenues(): Promise<Cafe[]> {
-  const { data, error } = await supabase.rpc("get_my_visited_venues");
-  if (error) throw error;
-  return (data as unknown as VenueCard[]).map(toCafe);
-}
-
-/** Admins only: every active café, for picking where a coffee talk happens. */
-export async function fetchVenues(): Promise<Cafe[]> {
-  const { data, error } = await supabase.from("venues").select("*").eq("is_active", true).order("name");
-  if (error) throw error;
-  return data.map(venueRowToCafe);
+  const body: AdminEventCreate = {
+    event_at: event.date.toISOString(),
+    target_group_size: event.groupSize,
+    default_venue_id: event.venueId,
+    location_hidden: event.locationHidden,
+  };
+  const created = await api.post<AdminEvent>("/admin/events", body);
+  return created.id;
 }
