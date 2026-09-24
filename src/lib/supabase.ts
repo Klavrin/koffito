@@ -1,9 +1,10 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import "react-native-url-polyfill/auto";
+import "react-native-get-random-values";
+
 import { createClient } from "@supabase/supabase-js";
 import { AppState, Platform } from "react-native";
-import "react-native-url-polyfill/auto";
 
-import type { Database } from "@/types/database";
+import { LargeSecureStore } from "./secure-session-storage";
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabasePublishableKey =
@@ -16,11 +17,15 @@ if (!supabaseUrl || !supabasePublishableKey) {
   );
 }
 
-/** Single typed Supabase client for the whole app; sessions persist on the device. */
-export const supabase = createClient<Database>(supabaseUrl, supabasePublishableKey, {
+/**
+ * The app's only Supabase client, used for authentication alone: sign up, sign in, sign out
+ * and token refresh. Data lives behind the Koffito API (`src/lib/api.ts`); direct Data API
+ * access is refused by the server.
+ */
+export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
-    // The web build falls back to localStorage; AsyncStorage is only wired up on native.
-    ...(Platform.OS !== "web" ? { storage: AsyncStorage } : {}),
+    // Native keeps the session encrypted on the device; the web build falls back to localStorage.
+    ...(Platform.OS !== "web" ? { storage: new LargeSecureStore() } : {}),
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,

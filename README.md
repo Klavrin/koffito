@@ -10,11 +10,11 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm install
    ```
 
-2. Point the app at Supabase
+2. Point the app at Supabase and the Koffito API
 
-   Copy `.env.example` to `.env` and fill in the project URL and publishable key
-   (Supabase dashboard → Project Settings → API). Both values are safe to ship in
-   the client; row-level security policies protect the data.
+   Copy `.env.example` to `.env` and fill in the Supabase project URL and publishable key
+   (Supabase dashboard → Project Settings → API) plus the API base URL. All three values are
+   safe to ship in the client.
 
 3. Start the app
 
@@ -33,15 +33,34 @@ You can start developing by editing the files inside the **app** directory. This
 
 ## Backend
 
-Koffito stores its data in Supabase (Postgres + Auth). The front end talks to it through
-`src/lib/supabase.ts`; everything the screens need lives in `src/api/`, which wraps the
-database functions (`get_my_events`, `get_open_events`, `join_event`, `leave_event`, …)
-and tables (`profiles`, `surveys`, `user_settings`, `reports`, `event_ratings`) and maps
-rows to the app's types. `src/types/database.ts` holds the generated schema types.
+Koffito keeps its data in Supabase (Postgres + Auth), but the app never reads or writes the
+database directly:
 
-Coffee talks are created by admins (`profiles.is_admin`), and the café plus the other
-guests stay hidden until the event's reveal time — the API simply leaves them out, and
-the UI shows a "surprise café" until then.
+- **Supabase is used for authentication only** — sign up, sign in, sign out and token refresh.
+  `src/lib/supabase.ts` holds the client; on iOS/Android the session is stored encrypted on the
+  device, on the web it falls back to `localStorage`.
+- **Every data request goes to the Koffito API** (FastAPI, in the sibling `Koffito-Backend`
+  repository) with `Authorization: Bearer <access_token>`. `src/lib/api.ts` attaches the token,
+  refreshes the session once on a `401` and retries, and maps the API's error envelope to
+  `ApiError`. Everything the screens need lives in `src/api/`, which calls the endpoints and maps
+  the responses to the app's types; `src/types/api.ts` mirrors the API's request/response shapes.
+- **Direct database access from the app is closed.** The server refuses `supabase.from()` /
+  `supabase.rpc()` calls from clients; the API verifies the token on every request and calls
+  Supabase with the user's own token, so row-level security still applies.
+
+The full contract is in [`docs/frontend-integration.md`](docs/frontend-integration.md).
+
+For local development, run the API next to the app:
+
+```bash
+cd ../Koffito-Backend && uv run koffito   # serves http://127.0.0.1:8000
+```
+
+and set `EXPO_PUBLIC_API_URL` accordingly (see `.env.example` for simulator, emulator and device URLs).
+
+Coffee talks are created by admins (`profiles.is_admin`), and the café plus the other guests stay
+hidden until the event's reveal time — the API simply leaves them out, and the UI shows a
+"surprise café" until then.
 
 ## Get a fresh project
 
