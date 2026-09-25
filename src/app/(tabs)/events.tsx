@@ -3,7 +3,6 @@ import { useState } from "react";
 import { View } from "react-native";
 
 import { EventCard } from "@/components/events/event-card";
-import { MissedFeedbackSheet } from "@/components/events/missed-feedback-sheet";
 import { RateExperienceSheet } from "@/components/events/rate-experience-sheet";
 import { Screen } from "@/components/layout";
 import { Chip, EmptyState, ErrorState, Header, IconButton, Skeleton, useToast } from "@/components/ui";
@@ -21,54 +20,25 @@ const filters: { key: Filter; label: string }[] = [
 
 export default function EventsPage() {
   const { profile } = useSession();
-  const { events, loading, error, refresh, confirmAttendance, reviewEvent } = useEvents();
+  const { events, loading, error, refresh, reviewEvent } = useEvents();
   const toast = useToast();
   const [filter, setFilter] = useState<Filter>("upcoming");
-  // Which past coffee talk is being reviewed, and in which sheet.
-  const [reviewing, setReviewing] = useState<string | null>(null);
-  const [missed, setMissed] = useState<string | null>(null);
+  // The completed coffee talk being rated.
+  const [rating, setRating] = useState<string | null>(null);
 
-  const openReport = (id: string | null) => {
-    setReviewing(null);
-    setMissed(null);
-    router.push({ pathname: "/report", params: id ? { eventId: id } : {} });
-  };
+  const openDetails = (id: string, ask?: boolean) =>
+    router.push({ pathname: "/event-details", params: ask ? { id, ask: "1" } : { id } });
 
-  const handleConfirm = async (id: string, happened: boolean) => {
-    // A missed coffee talk is recorded together with the note from the sheet.
-    if (!happened) return setMissed(id);
-
-    try {
-      await confirmAttendance(id, true);
-      setReviewing(id);
-    } catch (confirmError) {
-      toast.show({ title: "Couldn't save that", message: describeError(confirmError), variant: "error" });
-    }
-  };
-
-  const handleReview = async (rating: number, comment: string) => {
-    const id = reviewing;
-    setReviewing(null);
+  const handleRate = async (value: number, comment: string) => {
+    const id = rating;
+    setRating(null);
     if (!id) return;
 
     try {
-      await reviewEvent(id, { rating, comment });
+      await reviewEvent(id, { rating: value, comment });
       toast.show({ title: "Thanks for the review!", variant: "success" });
-    } catch (reviewError) {
-      toast.show({ title: "Couldn't save your review", message: describeError(reviewError), variant: "error" });
-    }
-  };
-
-  const handleMissed = async (comment: string) => {
-    const id = missed;
-    setMissed(null);
-    if (!id) return;
-
-    try {
-      await confirmAttendance(id, false, comment.trim() || undefined);
-      toast.show({ title: "Thanks for letting us know", variant: "info" });
-    } catch (missedError) {
-      toast.show({ title: "Couldn't save that", message: describeError(missedError), variant: "error" });
+    } catch (rateError) {
+      toast.show({ title: "Couldn't save your review", message: describeError(rateError), variant: "error" });
     }
   };
 
@@ -93,8 +63,8 @@ export default function EventsPage() {
               <IconButton
                 icon="add"
                 variant="primary"
-                accessibilityLabel="Create coffee talk"
-                onPress={() => router.push("/create-event")}
+                accessibilityLabel="Manage coffee talks"
+                onPress={() => router.push("/admin/events")}
               />
             ) : undefined
           }
@@ -116,39 +86,34 @@ export default function EventsPage() {
         <ErrorState title="Couldn't load your coffee talks" onRetry={refresh} className="flex-1 justify-center" />
       ) : visible.length === 0 ? (
         <EmptyState
-          emoji=""
-          title={filter === "upcoming" ? "No coffee talks planned" : "No past coffee talks yet"}
+          emoji="☕"
+          title={filter === "upcoming" ? "No coffee buddies yet" : "No past coffee talks yet"}
           description={filter === "upcoming" ? "There's always someone new to meet." : "Your coffee stories will show up here."}
           action={{ title: "Find coffee talk", leftIcon: "search", onPress: () => router.push("/find-coffee-talk") }}
           className="flex-1 justify-center"
         />
       ) : (
-        <>
-          {visible.map((event, index) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              animateIn={index}
-              onPress={() => router.push({ pathname: "/event-details", params: { id: event.id } })}
-              onConfirm={(happened) => handleConfirm(event.id, happened)}
-              onReview={() => setReviewing(event.id)}
-            />
-          ))}
-        </>
+        visible.map((event, index) => (
+          <EventCard
+            key={event.id}
+            event={event}
+            animateIn={index}
+            onPress={() => openDetails(event.id)}
+            onReveal={() => openDetails(event.id, true)}
+            onRate={() => setRating(event.id)}
+          />
+        ))
       )}
 
       <RateExperienceSheet
-        visible={!!reviewing}
-        onClose={() => setReviewing(null)}
-        onSubmit={handleReview}
-        onReport={() => openReport(reviewing)}
-      />
-
-      <MissedFeedbackSheet
-        visible={!!missed}
-        onClose={() => setMissed(null)}
-        onSubmit={handleMissed}
-        onReport={() => openReport(missed)}
+        visible={!!rating}
+        onClose={() => setRating(null)}
+        onSubmit={handleRate}
+        onReport={() => {
+          const id = rating;
+          setRating(null);
+          if (id) openDetails(id);
+        }}
       />
     </Screen>
   );

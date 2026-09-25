@@ -12,8 +12,11 @@ const routes = [
   "src/app/(app)/survey.tsx",
   "src/app/(app)/survey-profile-settings.tsx",
   "src/app/(app)/settings.tsx",
-  "src/app/(app)/admin.tsx",
-  "src/app/(app)/create-event.tsx",
+  "src/app/(app)/admin/index.tsx",
+  "src/app/(app)/admin/events.tsx",
+  "src/app/(app)/admin/event.tsx",
+  "src/app/(app)/admin/cafes.tsx",
+  "src/app/(app)/admin/reports.tsx",
   "src/app/(app)/find-coffee-talk.tsx",
   "src/app/(app)/event-details.tsx",
   "src/app/(app)/report.tsx",
@@ -43,7 +46,7 @@ test("signed-in destinations are reachable from the app", async () => {
   const app = sources.join("\n");
 
   // `/components` is dev-only and reached from the dev menu.
-  for (const destination of ["/survey", "/survey-profile-settings", "/settings", "/find-coffee-talk", "/create-event", "/event-details", "/report", "/admin"]) {
+  for (const destination of ["/survey", "/survey-profile-settings", "/settings", "/find-coffee-talk", "/event-details", "/report", "/admin", "/admin/events", "/admin/event", "/admin/cafes", "/admin/reports"]) {
     assert.match(app, new RegExp(`"${destination}"`), `nothing links to ${destination}`);
   }
 });

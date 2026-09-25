@@ -252,15 +252,15 @@ Every error has the same shape:
 `code` is stable and is what the UI should switch on; `message` is for logs. `details` is
 present for `validation_error` (a list of `{loc, msg, type}`) and some constraint errors.
 
-| Status | Codes                                                                                                                                                                                         | Meaning / what to do                                                                                            |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| 401    | `missing_token`, `invalid_token`, `token_expired`, `unknown_kid`, `not_authenticated`                                                                                                         | Refresh the session once and retry; if it happens again, sign out. Response carries `WWW-Authenticate: Bearer`. |
-| 403    | `admin_required`, `forbidden`                                                                                                                                                                 | Not allowed. Hide the action.                                                                                   |
-| 404    | `profile_not_found`, `settings_not_found`, `survey_not_found`, `event_not_found`, `venue_not_found`, `report_not_found`, `not_found`                                                          | Nothing there (or not visible to this user).                                                                    |
-| 409    | see the endpoint tables                                                                                                                                                                       | A business rule said no. Show the specific message.                                                             |
-| 422    | `validation_error`, `empty_update`, `invalid_stage`, `unknown_language`, `invalid_rating`, `event_in_the_past`, `constraint_violation`, `invalid_reference`, `invalid_value`, `missing_field` | The request is malformed. Fix the form.                                                                         |
-| 429    | `rate_limited`                                                                                                                                                                                | Back off for `Retry-After` seconds.                                                                             |
-| 5xx    | `internal_error`, `backend_misconfigured`, `upstream_error`, `upstream_unavailable`, `upstream_timeout`                                                                                       | Server-side. Retry later, show a generic error.                                                                 |
+| Status | Codes                                                                                                                                                                                                                                                                            | Meaning / what to do                                                                                            |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 401    | `missing_token`, `invalid_token`, `token_expired`, `unknown_kid`, `not_authenticated`                                                                                                                                                                                            | Refresh the session once and retry; if it happens again, sign out. Response carries `WWW-Authenticate: Bearer`. |
+| 403    | `admin_required`, `forbidden`                                                                                                                                                                                                                                                    | Not allowed. Hide the action.                                                                                   |
+| 404    | `profile_not_found`, `settings_not_found`, `survey_not_found`, `event_not_found`, `venue_not_found`, `report_not_found`, `not_found`                                                                                                                                             | Nothing there (or not visible to this user).                                                                    |
+| 409    | `survey_incomplete`, `event_not_open`, `registration_closed`, `time_conflict`, `event_full`, `nothing_to_cancel`, `not_in_group`, `event_not_revealed`, `event_started`, `already_responded`, `event_not_completed`, `not_attended`, `event_not_cancellable` (see the endpoints) | A business rule said no. Show the specific message.                                                             |
+| 422    | `validation_error`, `empty_update`, `unknown_language`, `invalid_rating`, `event_in_the_past`, `registration_window_passed`, `constraint_violation`, `invalid_reference`, `invalid_value`, `missing_field`                                                                       | The request is malformed. Fix the form.                                                                         |
+| 429    | `rate_limited`                                                                                                                                                                                                                                                                   | Back off for `Retry-After` seconds.                                                                             |
+| 5xx    | `internal_error`, `backend_misconfigured`, `upstream_error`, `upstream_unavailable`, `upstream_timeout`                                                                                                                                                                          | Server-side. Retry later, show a generic error.                                                                 |
 
 ### Rate limits
 
@@ -365,30 +365,43 @@ join events until a survey is **completed**. Response: same shape as `GET /me/su
   {
     "id": "cee809b6-ac52-4a29-9264-63083df8f479",
     "event_at": "2026-09-27T06:00:00Z",
+    "registration_closes_at": "2026-09-26T05:55:00Z",
     "reveal_at": "2026-09-26T06:00:00Z",
-    "status": "pending",
-    "participant_status": "joined",
-    "joined": true,
-    "blind": true,
-    "location_hidden": true,
-    "reveal_opened": false,
-    "max_participants": 4,
-    "cafe": null,
-    "participants": null,
-    "attended": null,
-    "attendance_note": null,
+    "completes_at": "2026-09-27T08:00:00Z",
+    "event_status": "revealed",
+    "participant_status": "confirmed",
+    "cancel_reason": null,
+    "group_number": 2,
+    "cafe": {
+      "id": "…",
+      "name": "Tucano Coffee",
+      "address": "Str. Ismail 33",
+      "mapsUrl": "…",
+      "…": "…"
+    },
+    "members": [
+      {
+        "id": "…",
+        "name": "Gabi",
+        "emoji": "☕",
+        "status": "matched",
+        "sharedInterests": ["topics:music"]
+      }
+    ],
     "my_rating": null,
     "my_comment": null
   }
 ]
 ```
 
-- `status`: `pending` (joined/matched, not confirmed) · `confirmed` · `completed` · `cancelled`.
-- `participant_status`: the raw state `joined|matched|confirmed_24h|confirmed_3h|declined|cancelled|no_show`.
-- `blind`: the café is hidden until `reveal_at`. `location_hidden`: it is _still_ hidden now.
-- Once revealed, `cafe` is a venue card (see `GET /me/venues`) and `participants` is a list of
-  groupmate cards: `{id, name, emoji, gender, age, languages, occupation, favoriteCoffee, survey}`.
-- `reveal_opened`: the user already opened the reveal (`POST /events/{id}/reveal`).
+- `event_status`: `open` → `closed` → `matched` → `revealed` → `completed`, or `failed` /
+  `cancelled`. The server moves it every minute; the app never does.
+- `participant_status`: `joined` → `matched` → `confirmed` | `declined`.
+- `cancel_reason`: `not_enough_people` (fewer than 3 joined) or `admin`.
+- `cafe`, `group_number` and `members` are `null` until the event is revealed **and** the user
+  said "Yes, I'm coming". `members` are first names; `sharedInterests` are survey answers both
+  people picked, as `question:answer` (only `hobbies` and `topics`).
+- `src/lib/events.ts` (`getEventPhase`) turns the two statuses into what each screen shows.
 
 #### `GET /me/venues` — cafés the user has visited (most recent first)
 
@@ -411,48 +424,43 @@ join events until a survey is **completed**. Response: same shape as `GET /me/su
 
 ### 5.2 Events
 
+The admin only picks `event_at` (T). Registration closes at T − 24h5m, the group is revealed at
+T − 24h and the event completes at T + 2h. Groups are 3–5 people; capacity is active cafés × 5.
+
 #### `GET /events` — open events the user can join
 
 ```json
 [
   {
-    "id": "…",
+    "id": "cee809b6-ac52-4a29-9264-63083df8f479",
     "event_at": "2026-09-27T06:00:00Z",
-    "max_participants": 4,
-    "spots_left": 39,
+    "registration_closes_at": "2026-09-26T05:55:00Z",
+    "reveal_at": "2026-09-26T06:00:00Z",
+    "full": false,
     "joined": false
   }
 ]
 ```
 
-`max_participants` is the group size; `spots_left` counts the whole event.
+Only `open` events before their registration close. Never a café or a head count.
 
 #### `POST /events/{id}/join` → `204`
 
-409 codes: `survey_incomplete` (finish the survey first), `event_not_open`, `time_conflict`
-(another event within ±2 h), `event_full`. Re-joining after leaving is allowed.
+409 codes: `survey_incomplete`, `event_not_open`, `registration_closed`, `time_conflict`
+(another event within ±2 h), `event_full`. Joining twice is a no-op.
 
 #### `POST /events/{id}/leave` → `204`
 
-409 `nothing_to_cancel` (not a participant, or the event already started).
+Only while the event is `open` and before registration closes. 409 `nothing_to_cancel`
+(not a participant) or `registration_closed`.
 
-#### `POST /events/{id}/confirm` → `204`
+#### `POST /events/{id}/respond` → `204`
 
-Body `{"stage": "24h"}` or `{"stage": "3h"}`. The server sends reminders at those points;
-the user confirms attendance from the app. 409 `event_not_confirmable` (event over,
-cancelled or draft), `nothing_to_confirm` (already confirmed, or not a participant);
-422 `invalid_stage`.
+After the reveal: `{"coming": true}` ("Yes, I'm coming") or `{"coming": false}` ("No, I can't
+make it"). A confirmed user can still send `false` ("Can't make it anymore") until the event
+starts. 409 `not_in_group`, `event_not_revealed`, `event_started`, `already_responded`.
 
-#### `POST /events/{id}/reveal` → `204`
-
-Call when the user opens the revealed café card, so it stays open. 409 `not_revealed_yet`.
-
-#### `POST /events/{id}/attendance` → `204`
-
-After the event: `{"happened": true}` or `{"happened": false, "note": "nobody showed up"}`
-(`note` ≤ 500 chars, optional). 409 `nothing_to_confirm` (event not over yet / not a participant).
-
-#### `PUT /events/{id}/rating` — rate an attended event
+#### `PUT /events/{id}/rating` — rate a completed coffee talk
 
 Body `{"rating": 5, "comment": "great people"}` (`rating` 1–5, `comment` ≤ 1000, optional).
 Creates or replaces the rating. Response:
@@ -467,7 +475,7 @@ Creates or replaces the rating. Response:
 }
 ```
 
-409 `not_attended` (the event has not happened yet, or the user was not there).
+409 `event_not_completed`, `not_attended` (the user didn't confirm); 422 `invalid_rating`.
 
 ### 5.3 Users
 
@@ -506,6 +514,8 @@ Visible for people the user shares a _revealed_ group with (and for admins). Oth
 
 `reason`: `no-show|rude|unsafe|fake|other`. `details`: 10–2000 chars. `reported_user_id` and
 `event_id` are optional. The reporter is always the signed-in user. Limited to 5 per hour.
+Reporting a person needs `event_id` of a **completed** event in which both were in the same group:
+otherwise 409 `event_not_completed` or `not_in_group`.
 
 Response:
 
@@ -526,19 +536,20 @@ Response:
 Admin-ness is decided by the server on every request (`profiles.is_admin`); a non-admin gets
 `403 admin_required`. Do not cache the flag beyond the current session.
 
-| Method & path                                           | Body / query                                                                                                                                                                                                                       | Response                                                                                                                                                                                                                                             |
-| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------- | --------- | ----------- | ------- |
-| `GET /admin/events?status=&from=&to=&limit=50&offset=0` | filters optional (`status` is an event status, `from`/`to` ISO datetimes)                                                                                                                                                          | `{"items": [Event], "total", "limit", "offset"}`                                                                                                                                                                                                     |
-| `POST /admin/events` → 201                              | `{"event_at": "<future ISO>", "target_group_size": 4, "default_venue_id": null, "location_hidden": true, "capacity": 40, "title": null, "status": "open"}` (only `event_at` required)                                              | `Event`                                                                                                                                                                                                                                              |
-| `GET /admin/events/{id}`                                |                                                                                                                                                                                                                                    | `Event` (404 `event_not_found`)                                                                                                                                                                                                                      |
-| `PATCH /admin/events/{id}`                              | partial: `title`, `event_at`, `reveal_at` (≤ event_at), `capacity`, `target_group_size` (2–8), `default_venue_id`, `status` (`draft                                                                                                | open                                                                                                                                                                                                                                                 | matched   | confirmed                                         | completed | cancelled`) | `Event` |
-| `GET /admin/events/{id}/participants`                   |                                                                                                                                                                                                                                    | `[{"id", "user_id", "status", "group_id", "joined_at", "confirmed_24h_at", "confirmed_3h_at", "cancelled_at", "attended", "attendance_note", "reveal_opened_at", "reminded_24h_at", "reminded_3h_at", "profile": {"display_name", "avatar_emoji"}}]` |
-| `GET /admin/venues?include_inactive=false`              |                                                                                                                                                                                                                                    | `[Venue]`                                                                                                                                                                                                                                            |
-| `POST /admin/venues` → 201                              | `{"name", "address", "description", "photo_url", "website", "phone", "maps_url", "google_place_id", "latitude", "longitude", "rating" (0–5), "popular_times" (7 ints), "capacity" (>0), "is_active"}` (`name`, `address` required) | `Venue`                                                                                                                                                                                                                                              |
-| `GET /admin/venues/{id}` · `PATCH /admin/venues/{id}`   | partial body                                                                                                                                                                                                                       | `Venue` (404 `venue_not_found`)                                                                                                                                                                                                                      |
-| `DELETE /admin/venues/{id}` → 204                       | soft delete: `is_active=false`                                                                                                                                                                                                     |                                                                                                                                                                                                                                                      |
-| `GET /admin/reports?status=&limit=50&offset=0`          | `status`: `open                                                                                                                                                                                                                    | reviewing                                                                                                                                                                                                                                            | resolved` | `{"items": [Report], "total", "limit", "offset"}` |
-| `PATCH /admin/reports/{id}`                             | `{"status": "reviewing"}`                                                                                                                                                                                                          | `{"id", "status", "handled_by", "updated_at"}` (`handled_by` = the admin)                                                                                                                                                                            |
+| Method & path                                           | Body / query                                                                                                      | Response                                                        |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `GET /admin/events?status=&from=&to=&limit=50&offset=0` | filters optional                                                                                                  | `{"items": [Event], "total", "limit", "offset"}`                |
+| `POST /admin/events` → 201                              | `{"event_at": "<ISO with timezone>"}` only                                                                        | `Event` (422 `event_in_the_past`, `registration_window_passed`) |
+| `GET /admin/events/{id}`                                |                                                                                                                   | `EventDetail` (404 `event_not_found`)                           |
+| `POST /admin/events/{id}/cancel`                        |                                                                                                                   | `EventDetail` (409 `event_not_cancellable`)                     |
+| `GET /admin/venues?include_inactive=false`              |                                                                                                                   | `[Venue]`                                                       |
+| `POST /admin/venues` → 201                              | `{"name", "address", "description", "photo_url", "website", "phone", "maps_url", …}` (`name`, `address` required) | `Venue`                                                         |
+| `GET /admin/venues/{id}` · `PATCH /admin/venues/{id}`   | partial body, e.g. `{"is_active": false}`                                                                         | `Venue` (404 `venue_not_found`)                                 |
+| `DELETE /admin/venues/{id}` → 204                       | soft delete: `is_active=false`                                                                                    |                                                                 |
+| `GET /admin/reports?status=&limit=50&offset=0`          | `status`: `open`, `reviewing` or `resolved`                                                                       | `{"items": [Report], "total", "limit", "offset"}`               |
+| `PATCH /admin/reports/{id}`                             | `{"status": "reviewing"}`                                                                                         | `{"id", "status", "handled_by", "updated_at"}`                  |
+
+There is no way to edit an event or its groups: the admin only creates, observes and cancels.
 
 `Event`:
 
@@ -547,16 +558,26 @@ Admin-ness is decided by the server on every request (`profiles.is_admin`); a no
   "id": "…",
   "title": null,
   "event_at": "…",
-  "capacity": 40,
-  "target_group_size": 4,
+  "registration_closes_at": "…",
   "reveal_at": "…",
-  "default_venue_id": "…",
+  "completes_at": "…",
   "status": "open",
-  "created_by": "…",
+  "cancel_reason": null,
+  "status_changed_at": "…",
+  "matching_error": null,
   "created_at": "…",
-  "updated_at": "…"
+  "participant_count": 22,
+  "group_count": 0,
+  "capacity": 40
 }
 ```
+
+`EventDetail`: `{event: Event, group_size_min: 3, group_size_max: 5, active_cafes,
+estimated_groups, participants: [{user_id, name, emoji, status, group_number, joined_at}],
+groups: [{id, number, cafe, shared_interests, members: [{user_id, name, emoji, status,
+shared_interests}], ratings: [{user_id, name, rating, comment}], average_rating}],
+reports: [{id, reason, details, status, reported_by, reported_user_id, reported_user_name,
+created_at}]}`.
 
 `Venue`: all columns (`id, name, description, photo_url, address, website, phone, maps_url,
 google_place_id, latitude, longitude, rating, popular_times, capacity, is_active, created_at`).
@@ -571,15 +592,18 @@ reported_by (name), reported_user_id, reported_user_name, handled_by`.
 `PATCH /me {"onboarded": true}`.
 
 **Joining**: `GET /events` → `POST /events/{id}/join` → the event shows up in `GET /me/events`
-as `pending`. The server matches groups and picks the café; at `reveal_at` the item gains
-`cafe` + `participants` and `location_hidden` turns false.
+with `event_status: "open"`, `participant_status: "joined"`.
 
-**Before the meetup**: the server sends a 24h and a 3h reminder (push, once wired up; the
-app should also nudge from `GET /me/events` timings) → `POST /events/{id}/confirm`
-with the matching `stage`.
+**Registration closes** (T − 24h5m): the event becomes `closed` (or `cancelled` with
+`cancel_reason: "not_enough_people"`), then `matched` a minute later; the user is `matched`.
 
-**After**: `POST /events/{id}/attendance` → `PUT /events/{id}/rating` → `POST /reports` if
-something went wrong. Groupmates stay visible via `GET /users/{id}`.
+**Reveal** (T − 24h): `event_status: "revealed"` → the app asks "Are you coming?" →
+`POST /events/{id}/respond` → with `coming: true` the next `GET /me/events` carries `cafe`,
+`group_number` and `members`.
+
+**After** (T + 2h): `event_status: "completed"` → `PUT /events/{id}/rating` →
+`POST /reports` with `reported_user_id` if a groupmate misbehaved. Groupmates stay visible via
+`GET /users/{id}` for confirmed members.
 
 ## 7. Things the app must NOT do
 

@@ -14,7 +14,9 @@ import type { ReportReason } from "@/types/koffito";
 const MIN_DETAILS = 10;
 
 export default function ReportPage() {
-  const { eventId } = useLocalSearchParams<{ eventId?: string }>();
+  // `userId` + `name` report a groupmate after a completed coffee talk; without them it's
+  // a report about the coffee talk itself.
+  const { eventId, userId, name } = useLocalSearchParams<{ eventId?: string; userId?: string; name?: string }>();
   const { getEvent } = useEvents();
   const toast = useToast();
 
@@ -35,7 +37,12 @@ export default function ReportPage() {
 
     setSending(true);
     try {
-      await sendReport({ reason: reason[0] as ReportReason, details, eventId: event?.id });
+      await sendReport({
+        reason: reason[0] as ReportReason,
+        details,
+        eventId: event?.id ?? eventId,
+        reportedUserId: userId,
+      });
       toast.show({
         title: "Report sent",
         message: "Thank you - our team will take a look.",
@@ -52,7 +59,7 @@ export default function ReportPage() {
     <Screen
       header={
         <Header
-          title="Report"
+          title={name ? `Report ${name}` : "Report"}
           subtitle={event ? `Coffee talk at ${event.cafe?.name ?? "a mystery café"}` : undefined}
           onBack={goBack}
         />

@@ -81,8 +81,8 @@ export default function SettingsPage() {
         {profile.isAdmin && (
           <SettingsRow
             icon="shield-checkmark-outline"
-            label="Reports"
-            description="Admin area"
+            label="Admin"
+            description="Coffee talks, cafés and reports"
             onPress={() => router.push("/admin")}
           />
         )}

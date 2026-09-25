@@ -9,6 +9,7 @@ import type {
   AdminReport,
   AdminVenue,
   Gender,
+  GroupMemberCard,
   MeResponse,
   MeSettings,
   MyEventResponse,
@@ -22,8 +23,8 @@ import type {
 import type {
   Cafe,
   CoffeeEvent,
+  GroupMember,
   Me,
-  MeetupStatusType,
   Profile,
   ProfileStats,
   Report,
@@ -121,39 +122,48 @@ export function venueRowToCafe(row: AdminVenue): Cafe {
   });
 }
 
-const meetupStatuses: MeetupStatusType[] = ["pending", "confirmed", "completed", "cancelled"];
+export function toGroupMember(card: GroupMemberCard): GroupMember {
+  return {
+    id: card.id,
+    name: card.name || "Coffee lover",
+    emoji: card.emoji ?? undefined,
+    status: card.status,
+    sharedInterests: card.sharedInterests ?? [],
+  };
+}
 
 export function toMyEvent(row: MyEventResponse): CoffeeEvent {
-  const status = meetupStatuses.find((value) => value === row.status) ?? "pending";
-
   return {
     id: row.id,
-    cafe: row.cafe ? toCafe(row.cafe) : undefined,
     date: new Date(row.event_at),
+    registrationClosesAt: new Date(row.registration_closes_at),
     revealAt: new Date(row.reveal_at),
-    participants: (row.participants ?? []).map(toUser),
-    maxParticipants: row.max_participants,
-    status,
-    joined: row.joined,
+    completesAt: new Date(row.completes_at),
+    status: row.event_status,
+    joined: true,
     participantStatus: row.participant_status,
-    locationHidden: row.location_hidden,
-    revealOpened: row.reveal_opened,
-    attendance: row.attended === true ? "happened" : row.attended === false ? "missed" : undefined,
-    attendanceNote: row.attendance_note ?? undefined,
+    cancelReason: row.cancel_reason ?? undefined,
+    groupNumber: row.group_number ?? undefined,
+    cafe: row.cafe ? toCafe(row.cafe) : undefined,
+    members: (row.members ?? []).map(toGroupMember),
     review: row.my_rating ? { rating: row.my_rating, comment: row.my_comment ?? "" } : undefined,
   };
 }
 
+const HOUR_MS = 60 * 60 * 1000;
+
 export function toOpenEvent(row: OpenEventResponse): CoffeeEvent {
+  const date = new Date(row.event_at);
   return {
     id: row.id,
-    date: new Date(row.event_at),
-    participants: [],
-    maxParticipants: row.max_participants,
-    spotsLeft: row.spots_left,
-    status: "pending",
+    date,
+    registrationClosesAt: new Date(row.registration_closes_at),
+    revealAt: new Date(row.reveal_at),
+    completesAt: new Date(date.getTime() + 2 * HOUR_MS),
+    status: "open",
     joined: row.joined,
-    locationHidden: true,
+    full: row.full,
+    members: [],
   };
 }
 

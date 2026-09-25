@@ -1,7 +1,9 @@
 import type { ImageSource } from "expo-image";
 
 import type { Interest } from "@/constants/interests";
-import type { ParticipantStatus } from "@/types/api";
+import type { CancelReason, EventStatus, ParticipantStatus } from "@/types/api";
+
+export type { CancelReason, EventStatus, ParticipantStatus };
 
 export type { Interest };
 
@@ -58,32 +60,41 @@ export type Cafe = {
   popularTimes: number[];
 };
 
+/** Someone in the user's group, as a confirmed member sees them. */
+export type GroupMember = {
+  id: string;
+  /** First name only. */
+  name: string;
+  emoji?: string;
+  status: ParticipantStatus;
+  /** Survey answers both people picked, as "question:answer" keys (e.g. "hobbies:hiking"). */
+  sharedInterests: string[];
+};
+
+/**
+ * A coffee talk as the app sees it. Everything time-based comes from the server: the admin
+ * only picks `date`, the rest is derived (close T − 24h5m, reveal T − 24h, completed T + 2h)
+ * and the statuses are moved by the server's scheduler.
+ */
 export type CoffeeEvent = {
   id: string;
-  /** Missing while the café is still a secret: the API only sends it once the reveal time has passed. */
-  cafe?: Cafe;
   date: Date;
-  /** When the café and the other guests get revealed. Unknown for talks the user hasn't joined. */
-  revealAt?: Date;
-  /** Other guests in the user's group; empty until the reveal. */
-  participants: User[];
-  maxParticipants: number;
-  /** Seats still free, reported by the API for open coffee talks. */
-  spotsLeft?: number;
-  status: MeetupStatusType;
-  /** Whether the signed-in user is part of this coffee talk. */
+  registrationClosesAt: Date;
+  revealAt: Date;
+  completesAt: Date;
+  status: EventStatus;
+  /** Whether the signed-in user joined this coffee talk. */
   joined: boolean;
-  /** The user's raw participation state, for talks they joined. */
+  /** The user's own state, for talks they joined. */
   participantStatus?: ParticipantStatus;
-  /** Blind coffee talks keep the café secret until shortly before the meetup. */
-  locationHidden?: boolean;
-  /** Set once the user taps to open a café whose reveal time has passed. */
-  revealOpened?: boolean;
-  /** Set once the user confirms whether a past coffee talk actually happened. */
-  attendance?: "happened" | "missed";
-  /** What the user said when a coffee talk fell through. */
-  attendanceNote?: string;
-  /** The user's own review; only for coffee talks that happened. */
+  cancelReason?: CancelReason;
+  /** Open talks only: capacity (active cafés × 5) is reached. */
+  full?: boolean;
+  /** Only once revealed and the user said "Yes, I'm coming". */
+  groupNumber?: number;
+  cafe?: Cafe;
+  members: GroupMember[];
+  /** The user's own rating, after the coffee talk. */
   review?: { rating: number; comment: string };
 };
 

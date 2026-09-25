@@ -1,95 +1,160 @@
-import type { ConfirmStage } from "@/types/api";
 import type { CoffeeEvent } from "@/types/koffito";
 
-const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
 
+/** Group size is a fixed rule, shown read-only to admins. */
+export const GROUP_SIZE = { min: 3, max: 5 } as const;
+
+/**
+ * Every moment of a coffee talk follows from its start time T. The server derives the same
+ * values; the app only needs them to preview a new event before it's created.
+ */
+export function eventTimes(date: Date) {
+  const t = date.getTime();
+  return {
+    registrationClosesAt: new Date(t - 24 * HOUR_MS - 5 * MINUTE_MS),
+    revealAt: new Date(t - 24 * HOUR_MS),
+    completesAt: new Date(t + 2 * HOUR_MS),
+  };
+}
+
+/** Still ahead: the user can act on it (join, wait, reveal, go). */
 export const isUpcoming = (event: CoffeeEvent) =>
-  event.date.getTime() > Date.now() && event.status !== "cancelled" && event.status !== "completed";
+  event.status === "open" || event.status === "closed" || event.status === "matched" || event.status === "revealed";
+
+/** Listed in "Find coffee talk": open and registration not closed yet. */
+export const isJoinable = (event: CoffeeEvent, now = Date.now()) =>
+  event.status === "open" && event.registrationClosesAt.getTime() > now;
 
 /**
- * When the café gets revealed. The database sends `reveal_at` for joined coffee
- * talks; open ones fall back to its default of a day before the meetup.
- */
-export const getRevealTime = (event: CoffeeEvent) => event.revealAt ?? new Date(event.date.getTime() - DAY_MS);
-
-/**
- * The single source of truth for how a coffee talk is displayed. Every screen
- * switches on this instead of re-deriving dates, so the backend only has to
- * supply the fields below and the states stay identical.
+ * The single source of truth for how a coffee talk looks. Every screen switches on this, so the
+ * wording and actions stay identical everywhere.
  *
- *   mystery         blind coffee talk, reveal time not reached yet (or café not sent yet)
- *   awaiting-reveal reveal time passed, the user has not opened it yet
- *   revealed        café is visible (never blind, or opened)
- *   past            the meetup is over: confirm, then review
+ *   available   open, not joined yet              → Join
+ *   full        open, not joined, capacity reached → "Event full"
+ *   joined      open, joined                       → "You're in", Leave
+ *   preparing   closed or matched                  → "Your group is being prepared"
+ *   ready       revealed, not answered             → "Your group is ready", Reveal
+ *   confirmed   revealed, said yes                 → café, members, "Can't make it anymore"
+ *   declined    said no                            → "You declined this coffee talk"
+ *   missed      revealed, started, never answered
+ *   rate        completed, went, not rated yet     → "Rate your coffee talk"
+ *   rated       completed, went, rated
+ *   over        completed, didn't go
+ *   cancelled   by the admin, or `lowTurnout` when fewer than 3 people joined
+ *   failed      matchmaking didn't work out
  */
-export type EventState =
-  | { kind: "mystery"; revealAt: Date }
-  | { kind: "awaiting-reveal" }
-  | { kind: "revealed" }
-  | { kind: "past"; needsConfirm: boolean; needsReview: boolean };
+export type EventPhase =
+  | { kind: "available" }
+  | { kind: "full" }
+  | { kind: "joined" }
+  | { kind: "preparing" }
+  | { kind: "ready" }
+  | { kind: "confirmed" }
+  | { kind: "declined" }
+  | { kind: "missed" }
+  | { kind: "rate" }
+  | { kind: "rated" }
+  | { kind: "over" }
+  | { kind: "cancelled"; lowTurnout: boolean }
+  | { kind: "failed" };
 
-export const getEventState = (event: CoffeeEvent): EventState => {
-  if (!isUpcoming(event)) {
-    return {
-      kind: "past",
-      needsConfirm: event.joined && !event.attendance,
-      needsReview: event.joined && event.attendance === "happened" && !event.review,
-    };
+export function getEventPhase(event: CoffeeEvent, now = Date.now()): EventPhase {
+  const answer = event.participantStatus;
+
+  switch (event.status) {
+    case "cancelled":
+      return { kind: "cancelled", lowTurnout: event.cancelReason === "not_enough_people" };
+    case "failed":
+      return { kind: "failed" };
+    case "open":
+      if (event.joined) return { kind: "joined" };
+      return event.full ? { kind: "full" } : { kind: "available" };
+    case "closed":
+    case "matched":
+      return { kind: "preparing" };
+    case "revealed":
+      if (answer === "declined") return { kind: "declined" };
+      if (answer === "confirmed") return { kind: "confirmed" };
+      return event.date.getTime() > now ? { kind: "ready" } : { kind: "missed" };
+    case "completed":
+      if (answer === "declined") return { kind: "declined" };
+      if (answer !== "confirmed") return { kind: "over" };
+      return event.review ? { kind: "rated" } : { kind: "rate" };
   }
+}
 
-  // Until the API sends the café there is nothing to open, so keep counting down.
-  if (!event.cafe) {
-    return { kind: "mystery", revealAt: getRevealTime(event) };
-  }
+/** Café and group are only shown once the user said "Yes, I'm coming". */
+export const canSeeDetails = (phase: EventPhase) =>
+  phase.kind === "confirmed" || phase.kind === "rate" || phase.kind === "rated";
 
-  if (event.locationHidden && !event.revealOpened) {
-    const revealAt = getRevealTime(event);
-    return revealAt.getTime() > Date.now() ? { kind: "mystery", revealAt } : { kind: "awaiting-reveal" };
-  }
+/** "Can't make it anymore": confirmed, and the coffee talk hasn't started. */
+export const canBackOut = (event: CoffeeEvent, now = Date.now()) =>
+  getEventPhase(event, now).kind === "confirmed" && event.date.getTime() > now;
 
-  return { kind: "revealed" };
-};
+export type PhaseTone = "neutral" | "primary" | "success" | "warning" | "error";
 
-/** Locked cafés stay hidden until the reveal time passes and the user opens them. */
-export const isLocationHidden = (event: CoffeeEvent) => {
-  const state = getEventState(event);
-  return state.kind === "mystery" || state.kind === "awaiting-reveal";
-};
-
-/** Café name to show; the real one only after the reveal. */
-export const getCafeLabel = (event: CoffeeEvent) => {
-  const state = getEventState(event);
-  if (state.kind === "mystery") return "Café locked";
-  if (state.kind === "awaiting-reveal") return "Café ready to open";
-  return event.cafe?.name ?? "Café to be announced";
-};
-
-/** Seats still free; open events report this directly, joined ones derive it from the group. */
-export const getSpotsLeft = (event: CoffeeEvent) =>
-  event.spotsLeft ?? Math.max(event.maxParticipants - event.participants.length - (event.joined ? 1 : 0), 0);
-
-/** Who is coming stays hidden until the reveal, same as the café. */
-export const formatAttendance = (event: CoffeeEvent) => {
-  if (isLocationHidden(event)) return "Who's coming is a surprise";
-  const count = event.participants.length;
-  const who = `${count} ${count === 1 ? "person" : "people"}`;
-  return isUpcoming(event) ? `${who} going` : `${who} went`;
+/** Short badge for each phase. */
+export const phaseBadge: Record<EventPhase["kind"], { label: string; tone: PhaseTone }> = {
+  available: { label: "Open", tone: "primary" },
+  full: { label: "Event full", tone: "neutral" },
+  joined: { label: "You're in", tone: "success" },
+  preparing: { label: "Registration closed", tone: "warning" },
+  ready: { label: "Group ready", tone: "primary" },
+  confirmed: { label: "Confirmed", tone: "success" },
+  declined: { label: "Declined", tone: "neutral" },
+  missed: { label: "Not answered", tone: "neutral" },
+  rate: { label: "Rate it", tone: "primary" },
+  rated: { label: "Coffee had", tone: "neutral" },
+  over: { label: "Over", tone: "neutral" },
+  cancelled: { label: "Cancelled", tone: "error" },
+  failed: { label: "Didn't work out", tone: "error" },
 };
 
 /**
- * Which attendance confirmation a joined, upcoming coffee talk is waiting for: "24h" from a day
- * before the meetup (unless already confirmed), "3h" from three hours before (unless confirmed
- * at that stage). The API has no time window of its own, so this is the app's rule.
+ * The sentence a phase shows in "My events" and on the details page. `formatWhen` renders the
+ * reveal time (e.g. "26 Sept 2026, 18:00").
  */
-export const getConfirmStage = (event: CoffeeEvent, now = Date.now()): ConfirmStage | undefined => {
-  if (!event.joined || event.status === "cancelled" || event.status === "completed") return undefined;
+export function phaseMessage(event: CoffeeEvent, formatWhen: (date: Date) => string, now = Date.now()) {
+  const phase = getEventPhase(event, now);
 
-  const untilStart = event.date.getTime() - now;
-  if (untilStart <= 0) return undefined;
+  switch (phase.kind) {
+    case "available":
+      return "Group and location revealed 24h before.";
+    case "full":
+      return "Event full. Every seat is taken for this one.";
+    case "joined":
+      return `You're in. Your group will be revealed on ${formatWhen(event.revealAt)}.`;
+    case "preparing":
+      return "Registration closed. Your group is being prepared.";
+    case "ready":
+      return "Your group is ready.";
+    case "confirmed":
+      return "You're coming. See you there!";
+    case "declined":
+      return "You declined this coffee talk.";
+    case "missed":
+      return "This coffee talk started before you answered.";
+    case "rate":
+      return "Rate your coffee talk.";
+    case "rated":
+      return "Thanks for the review!";
+    case "over":
+      return "This coffee talk is over.";
+    case "cancelled":
+      return phase.lowTurnout
+        ? "This coffee talk was cancelled because not enough people joined."
+        : "This coffee talk was cancelled.";
+    case "failed":
+      return "We couldn't set up groups for this coffee talk. Sorry!";
+  }
+}
 
-  const status = event.participantStatus;
-  if (untilStart <= 3 * HOUR_MS) return status === "confirmed_3h" ? undefined : "3h";
-  if (untilStart <= DAY_MS) return status === "joined" || status === "matched" ? "24h" : undefined;
-  return undefined;
-};
+/** Members' answers, as the group sees them. */
+export const memberStatusLabel = {
+  joined: "Not confirmed yet",
+  matched: "Not confirmed yet",
+  confirmed: "Confirmed",
+  declined: "Declined",
+} as const;

@@ -6,17 +6,11 @@
 
 export type Gender = "female" | "male" | "non_binary" | "prefer_not_to_say";
 export type Language = "ro" | "ru" | "en";
-export type ParticipantStatus =
-  | "joined"
-  | "matched"
-  | "confirmed_24h"
-  | "confirmed_3h"
-  | "declined"
-  | "cancelled"
-  | "no_show";
-export type MyEventStatus = "pending" | "confirmed" | "completed" | "cancelled";
-export type EventStatus = "draft" | "open" | "matched" | "confirmed" | "completed" | "cancelled";
-export type ConfirmStage = "24h" | "3h";
+/** joined → matched (in a group) → confirmed | declined (answer after the reveal). */
+export type ParticipantStatus = "joined" | "matched" | "confirmed" | "declined";
+/** open → closed → matched → revealed → completed, or failed / cancelled. Moved by the server only. */
+export type EventStatus = "open" | "closed" | "matched" | "revealed" | "completed" | "failed" | "cancelled";
+export type CancelReason = "admin" | "not_enough_people";
 export type ReportReason = "no-show" | "rude" | "unsafe" | "fake" | "other";
 export type ReportStatus = "open" | "reviewing" | "resolved";
 
@@ -104,39 +98,44 @@ export type VenueCard = {
   popularTimes: number[];
 };
 
-/** `GET /me/events` item */
+/** A groupmate as a confirmed member sees them. `sharedInterests` are "question:answer" keys. */
+export type GroupMemberCard = {
+  id: string;
+  name: string;
+  emoji: string | null;
+  status: ParticipantStatus;
+  sharedInterests: string[];
+};
+
+/** `GET /me/events` item. `cafe`, `members` and `group_number` only once revealed and confirmed. */
 export type MyEventResponse = {
   id: string;
   event_at: string;
+  registration_closes_at: string;
   reveal_at: string;
-  status: MyEventStatus;
+  completes_at: string;
+  event_status: EventStatus;
   participant_status: ParticipantStatus;
-  joined: boolean;
-  /** The café is hidden until `reveal_at`. */
-  blind: boolean;
-  /** It is still hidden now. */
-  location_hidden: boolean;
-  reveal_opened: boolean;
-  max_participants: number;
+  cancel_reason: CancelReason | null;
+  group_number: number | null;
   cafe: VenueCard | null;
-  participants: ProfileCard[] | null;
-  attended: boolean | null;
-  attendance_note: string | null;
+  members: GroupMemberCard[] | null;
   my_rating: number | null;
   my_comment: string | null;
 };
 
-/** `GET /events` item */
+/** `GET /events` item: only the time, never the café or a head count. */
 export type OpenEventResponse = {
   id: string;
   event_at: string;
-  max_participants: number;
-  spots_left: number;
+  registration_closes_at: string;
+  reveal_at: string;
+  full: boolean;
   joined: boolean;
 };
 
-export type ConfirmBody = { stage: ConfirmStage };
-export type AttendanceBody = { happened: boolean; note?: string };
+/** `POST /events/{id}/respond`: "Yes, I'm coming" / "No, I can't make it". */
+export type RespondBody = { coming: boolean };
 export type RatingBody = { rating: number; comment?: string };
 export type RatingResponse = {
   event_id: string;
@@ -183,30 +182,75 @@ export type AdminReport = {
 export type ReportStatusPatch = { status: ReportStatus };
 export type ReportStatusResponse = { id: string; status: ReportStatus; handled_by: string | null; updated_at: string };
 
-/** `Event` in the admin endpoints. */
+/** `GET /admin/events` item. `capacity` is global: active cafés × 5. */
 export type AdminEvent = {
   id: string;
   title: string | null;
   event_at: string;
-  capacity: number;
-  target_group_size: number;
+  registration_closes_at: string;
   reveal_at: string;
-  default_venue_id: string | null;
+  completes_at: string;
   status: EventStatus;
-  created_by: string | null;
+  cancel_reason: CancelReason | null;
+  status_changed_at: string;
+  matching_error: string | null;
   created_at: string;
-  updated_at: string;
+  participant_count: number;
+  group_count: number;
+  capacity: number;
 };
 
-/** `POST /admin/events` body; only `event_at` is required. */
-export type AdminEventCreate = {
-  event_at: string;
-  target_group_size?: number;
-  default_venue_id?: string | null;
-  location_hidden?: boolean;
-  capacity?: number;
-  title?: string | null;
-  status?: EventStatus;
+/** `POST /admin/events` body: the admin only picks the date and time. */
+export type AdminEventCreate = { event_at: string };
+
+export type AdminParticipant = {
+  user_id: string;
+  name: string;
+  emoji: string | null;
+  status: ParticipantStatus;
+  group_number: number | null;
+  joined_at: string;
+};
+
+export type AdminGroupMember = {
+  user_id: string;
+  name: string;
+  emoji: string | null;
+  status: ParticipantStatus;
+  shared_interests: string[];
+};
+
+export type AdminGroup = {
+  id: string;
+  number: number;
+  cafe: VenueCard | null;
+  shared_interests: string[];
+  members: AdminGroupMember[];
+  ratings: { user_id: string; name: string; rating: number; comment: string }[];
+  average_rating: number | null;
+};
+
+export type AdminEventReport = {
+  id: string;
+  reason: ReportReason;
+  details: string;
+  status: ReportStatus;
+  reported_by: string;
+  reported_user_id: string | null;
+  reported_user_name: string | null;
+  created_at: string;
+};
+
+/** `GET /admin/events/{id}` and `POST /admin/events/{id}/cancel` */
+export type AdminEventDetail = {
+  event: AdminEvent;
+  group_size_min: number;
+  group_size_max: number;
+  active_cafes: number;
+  estimated_groups: number;
+  participants: AdminParticipant[];
+  groups: AdminGroup[];
+  reports: AdminEventReport[];
 };
 
 /** `Venue` in the admin endpoints: every column. */
@@ -230,3 +274,15 @@ export type AdminVenue = {
 };
 
 export type ApiErrorEnvelope = { error: { code: string; message: string; details?: unknown } };
+
+/** `POST /admin/venues` body (`PATCH` takes any subset). */
+export type AdminVenueInput = {
+  name?: string;
+  address?: string;
+  description?: string | null;
+  photo_url?: string | null;
+  website?: string | null;
+  phone?: string | null;
+  maps_url?: string | null;
+  is_active?: boolean;
+};

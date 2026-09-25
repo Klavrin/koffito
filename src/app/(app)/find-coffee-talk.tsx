@@ -16,9 +16,9 @@ import {
   useToast,
 } from "@/components/ui";
 import { useEvents } from "@/context/events";
-import { dayKey, formatDate, formatTime } from "@/lib/date";
+import { dayKey, formatDate, formatDateTime, formatTime } from "@/lib/date";
 import { describeError } from "@/lib/errors";
-import { isUpcoming } from "@/lib/events";
+import { isJoinable } from "@/lib/events";
 import { goBack } from "@/lib/navigation";
 
 export default function FindCoffeeTalkPage() {
@@ -28,8 +28,9 @@ export default function FindCoffeeTalkPage() {
   // The coffee talk whose join / cancel request is in flight.
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  // Only talks still open for registration; joined ones stay listed so they can be left.
   const available = events
-    .filter(isUpcoming)
+    .filter((event) => isJoinable(event))
     .sort((a, b) => a.date.getTime() - b.date.getTime());
   const joinedCount = available.filter((event) => event.joined).length;
   const availableDays = [
@@ -43,10 +44,12 @@ export default function FindCoffeeTalkPage() {
     setBusyId(eventId);
     try {
       await joinEvent(eventId);
+      const event = events.find((item) => item.id === eventId);
       toast.show({
-        title: "Event joined",
-        message:
-          "Your spot is saved. The café and guests will be revealed closer to the meetup.",
+        title: "You're in!",
+        message: event
+          ? `Your group will be revealed on ${formatDateTime(event.revealAt)}.`
+          : "Your group will be revealed 24h before.",
         variant: "success",
       });
     } catch (joinError) {
@@ -61,12 +64,12 @@ export default function FindCoffeeTalkPage() {
     try {
       await leaveEvent(eventId);
       toast.show({
-        title: "Event cancelled",
-        message: "You can join another time whenever you are ready.",
+        title: "You left this coffee talk",
+        message: "You can join another one whenever you're ready.",
         variant: "info",
       });
     } catch (leaveError) {
-      toast.show({ title: "Couldn't cancel", message: describeError(leaveError), variant: "error" });
+      toast.show({ title: "Couldn't leave", message: describeError(leaveError), variant: "error" });
     } finally {
       setBusyId(null);
     }
@@ -171,7 +174,7 @@ export default function FindCoffeeTalkPage() {
                               size={14}
                               color="primary"
                             />
-                            <Text variant="caption">Revealed 24h before</Text>
+                            <Text variant="caption">Group and location revealed 24h before</Text>
                           </View>
                         </View>
                       </View>
@@ -185,15 +188,22 @@ export default function FindCoffeeTalkPage() {
                         <View className="items-end gap-0.5">
                           <Text variant="label">{formatTime(event.date)}</Text>
                           <Text variant="caption" tone="muted">
-                            Location locked
+                            {joined ? "You're in" : event.full ? "Event full" : "Location locked"}
                           </Text>
                         </View>
                       </View>
 
+                      {joined && (
+                        <Text variant="caption" tone="muted">
+                          You&apos;re in. Your group will be revealed on {formatDateTime(event.revealAt)}.
+                        </Text>
+                      )}
+
                       <Button
-                        title={joined ? "Cancel event" : "Join event"}
+                        title={joined ? "Leave" : event.full ? "Event full" : "Join"}
                         variant={joined ? "outline" : "primary"}
                         fullWidth
+                        disabled={!joined && event.full}
                         loading={busyId === event.id}
                         onPress={() =>
                           joined ? handleCancel(event.id) : handleJoin(event.id)

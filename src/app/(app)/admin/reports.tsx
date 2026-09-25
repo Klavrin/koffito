@@ -22,7 +22,7 @@ const filters: { key: Filter; label: string }[] = [
   { key: "resolved", label: "Resolved" },
 ];
 
-export default function AdminPage() {
+export default function AdminReportsPage() {
   const { profile } = useSession();
   const toast = useToast();
 

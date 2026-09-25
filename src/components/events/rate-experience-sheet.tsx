@@ -66,7 +66,7 @@ export function RateExperienceSheet({
     <BottomSheet
       visible={visible}
       onClose={onClose}
-      title="Rate your experience"
+      title="Rate your coffee talk"
       description="Your feedback helps everyone find better coffee talks.">
       <View className="gap-5 pb-6">
         <View className="items-center gap-2">

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { toMe, toMyEvent, toProfile, toProfileUpdate, toReport, toSettingsUpdate } from "../src/api/mappers.ts";
+import { toMe, toMyEvent, toOpenEvent, toProfile, toProfileUpdate, toReport, toSettingsUpdate } from "../src/api/mappers.ts";
 
 // The example payloads from docs/frontend-integration.md.
 const me = {
@@ -23,18 +23,15 @@ const me = {
 const myEvent = {
   id: "cee809b6-ac52-4a29-9264-63083df8f479",
   event_at: "2026-09-27T06:00:00Z",
+  registration_closes_at: "2026-09-26T05:55:00Z",
   reveal_at: "2026-09-26T06:00:00Z",
-  status: "pending",
+  completes_at: "2026-09-27T08:00:00Z",
+  event_status: "open",
   participant_status: "joined",
-  joined: true,
-  blind: true,
-  location_hidden: true,
-  reveal_opened: false,
-  max_participants: 4,
+  cancel_reason: null,
+  group_number: null,
   cafe: null,
-  participants: null,
-  attended: null,
-  attendance_note: null,
+  members: null,
   my_rating: null,
   my_comment: null,
 };
@@ -68,25 +65,57 @@ test("toMe carries stats and settings along", () => {
   assert.deepEqual(result.settings, { notifications: true, reminders: false });
 });
 
-test("toMyEvent keeps the server's reveal, attendance and rating state", () => {
-  const pending = toMyEvent(myEvent);
-  assert.equal(pending.cafe, undefined);
-  assert.deepEqual(pending.participants, []);
-  assert.equal(pending.participantStatus, "joined");
-  assert.equal(pending.revealOpened, false);
-  assert.equal(pending.attendance, undefined);
-  assert.equal(pending.review, undefined);
-  assert.equal(pending.revealAt.toISOString(), "2026-09-26T06:00:00.000Z");
+test("toMyEvent keeps the server's times and statuses, with no details while locked", () => {
+  const joined = toMyEvent(myEvent);
+  assert.equal(joined.joined, true);
+  assert.equal(joined.status, "open");
+  assert.equal(joined.participantStatus, "joined");
+  assert.equal(joined.registrationClosesAt.toISOString(), "2026-09-26T05:55:00.000Z");
+  assert.equal(joined.revealAt.toISOString(), "2026-09-26T06:00:00.000Z");
+  assert.equal(joined.completesAt.toISOString(), "2026-09-27T08:00:00.000Z");
+  assert.equal(joined.cafe, undefined);
+  assert.deepEqual(joined.members, []);
+  assert.equal(joined.review, undefined);
 
-  const happened = toMyEvent({ ...myEvent, status: "completed", attended: true, my_rating: 5, my_comment: "great people" });
-  assert.equal(happened.status, "completed");
-  assert.equal(happened.attendance, "happened");
-  assert.deepEqual(happened.review, { rating: 5, comment: "great people" });
+  const cancelled = toMyEvent({ ...myEvent, event_status: "cancelled", cancel_reason: "not_enough_people" });
+  assert.equal(cancelled.cancelReason, "not_enough_people");
+});
 
-  const missed = toMyEvent({ ...myEvent, attended: false, attendance_note: "nobody showed up" });
-  assert.equal(missed.attendance, "missed");
-  assert.equal(missed.attendanceNote, "nobody showed up");
-  assert.equal(missed.review, undefined);
+test("toMyEvent maps the café and group once revealed and confirmed", () => {
+  const revealed = toMyEvent({
+    ...myEvent,
+    event_status: "completed",
+    participant_status: "confirmed",
+    group_number: 2,
+    cafe: { id: "v1", name: "Tucano", description: "", photo: null, address: "Str. Ismail 33", website: null, phone: null, mapsUrl: "https://maps.example/t", rating: 4.5, popularTimes: [] },
+    members: [{ id: "u2", name: "Gabi", emoji: null, status: "declined", sharedInterests: ["topics:music"] }],
+    my_rating: 5,
+    my_comment: "great people",
+  });
+
+  assert.equal(revealed.groupNumber, 2);
+  assert.equal(revealed.cafe.name, "Tucano");
+  assert.equal(revealed.cafe.mapsUrl, "https://maps.example/t");
+  assert.deepEqual(revealed.members, [{ id: "u2", name: "Gabi", emoji: undefined, status: "declined", sharedInterests: ["topics:music"] }]);
+  assert.deepEqual(revealed.review, { rating: 5, comment: "great people" });
+});
+
+test("toOpenEvent keeps only the time and whether it's full", () => {
+  const open = toOpenEvent({
+    id: "e1",
+    event_at: "2026-09-27T06:00:00Z",
+    registration_closes_at: "2026-09-26T05:55:00Z",
+    reveal_at: "2026-09-26T06:00:00Z",
+    full: true,
+    joined: false,
+  });
+
+  assert.equal(open.status, "open");
+  assert.equal(open.full, true);
+  assert.equal(open.joined, false);
+  assert.equal(open.cafe, undefined);
+  assert.deepEqual(open.members, []);
+  assert.equal(open.completesAt.toISOString(), "2026-09-27T08:00:00.000Z");
 });
 
 test("toProfileUpdate sends only what changed", () => {

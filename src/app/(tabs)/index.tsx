@@ -78,12 +78,12 @@ export default function HomePage() {
       {/* Only admins set up coffee talks; the API refuses everyone else anyway. */}
       {profile.isAdmin && (
         <Button
-          title="Create coffee talk"
+          title="Manage coffee talks"
           variant="secondary"
           size="lg"
           fullWidth
           leftIcon="add-circle"
-          onPress={() => router.push("/create-event")}
+          onPress={() => router.push("/admin/events")}
         />
       )}
 

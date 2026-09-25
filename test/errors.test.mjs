@@ -17,8 +17,9 @@ test("explains API errors by their code", () => {
   assert.equal(describeError(new ApiError(409, "event_full", "event full")), "This coffee talk is already full.");
   assert.equal(describeError(new ApiError(409, "survey_incomplete", "")), "Finish your survey before joining a coffee talk.");
   assert.equal(describeError(new ApiError(403, "admin_required", "Admins only")), "Only admins can do that.");
-  assert.equal(describeError(new ApiError(409, "not_revealed_yet", "")), "The café isn't revealed yet — hold on a little longer.");
-  assert.equal(describeError(new ApiError(409, "nothing_to_confirm", "")), "Nothing to confirm here — maybe you already did.");
+  assert.equal(describeError(new ApiError(409, "event_not_revealed", "")), "Your group isn't revealed yet. Hold on a little longer.");
+  assert.equal(describeError(new ApiError(409, "registration_closed", "")), "Registration for this coffee talk has closed.");
+  assert.equal(describeError(new ApiError(409, "already_responded", "")), "You've already answered for this coffee talk.");
   assert.equal(describeError(new ApiError(401, "token_expired", "")), "Please log in again.");
 });
 
