@@ -8,6 +8,7 @@ import { Screen } from "@/components/layout";
 import { Button, Header, Input } from "@/components/ui";
 import { useToast } from "@/components/ui/toast";
 import { useSession } from "@/context/session";
+import { describeError } from "@/lib/errors";
 import {
   isValid,
   validateEmail,
@@ -56,7 +57,7 @@ export default function RegisterPage() {
       if (error) {
         toast.show({
           title: "Could not create account",
-          message: error.message,
+          message: describeError(error),
           variant: "error",
         });
         return;

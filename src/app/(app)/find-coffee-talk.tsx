@@ -1,30 +1,36 @@
-import { Image } from "expo-image";
 import { useState } from "react";
 import { View } from "react-native";
 
+import { CafePhoto } from "@/components/events/cafe-photo";
 import { AvailabilityCalendar } from "@/components/home/availability-calendar";
 import { Screen } from "@/components/layout";
 import {
   Button,
   Card,
   EmptyState,
+  ErrorState,
   Header,
   Icon,
+  Skeleton,
   Text,
   useToast,
 } from "@/components/ui";
 import { useEvents } from "@/context/events";
-import { isUpcoming } from "@/data/events";
-import { dayKey, formatDate, formatTime } from "@/lib/date";
+import { dayKey, formatDate, formatDateTime, formatTime } from "@/lib/date";
+import { describeError } from "@/lib/errors";
+import { isJoinable } from "@/lib/events";
 import { goBack } from "@/lib/navigation";
 
 export default function FindCoffeeTalkPage() {
-  const { events, joinEvent, leaveEvent } = useEvents();
+  const { events, loading, error, refresh, joinEvent, leaveEvent } = useEvents();
   const toast = useToast();
   const [selectedDay, setSelectedDay] = useState<string>();
+  // The coffee talk whose join / cancel request is in flight.
+  const [busyId, setBusyId] = useState<string | null>(null);
 
+  // Only talks still open for registration; joined ones stay listed so they can be left.
   const available = events
-    .filter(isUpcoming)
+    .filter((event) => isJoinable(event))
     .sort((a, b) => a.date.getTime() - b.date.getTime());
   const joinedCount = available.filter((event) => event.joined).length;
   const availableDays = [
@@ -34,24 +40,43 @@ export default function FindCoffeeTalkPage() {
     ? available.filter((event) => dayKey(event.date) === selectedDay)
     : available;
 
-  const handleJoin = (eventId: string) => {
-    joinEvent(eventId);
-    toast.show({
-      title: "Event joined",
-      message:
-        "Your spot is saved. The café and guests will be revealed closer to the meetup.",
-      variant: "success",
-    });
+  const handleJoin = async (eventId: string) => {
+    setBusyId(eventId);
+    try {
+      await joinEvent(eventId);
+      const event = events.find((item) => item.id === eventId);
+      toast.show({
+        title: "You're in!",
+        message: event
+          ? `Your group will be revealed on ${formatDateTime(event.revealAt)}.`
+          : "Your group will be revealed 24h before.",
+        variant: "success",
+      });
+    } catch (joinError) {
+      toast.show({ title: "Couldn't join", message: describeError(joinError), variant: "error" });
+    } finally {
+      setBusyId(null);
+    }
   };
 
-  const handleCancel = (eventId: string) => {
-    leaveEvent(eventId);
-    toast.show({
-      title: "Event cancelled",
-      message: "You can join another time whenever you are ready.",
-      variant: "info",
-    });
+  const handleCancel = async (eventId: string) => {
+    setBusyId(eventId);
+    try {
+      await leaveEvent(eventId);
+      toast.show({
+        title: "You left this coffee talk",
+        message: "You can join another one whenever you're ready.",
+        variant: "info",
+      });
+    } catch (leaveError) {
+      toast.show({ title: "Couldn't leave", message: describeError(leaveError), variant: "error" });
+    } finally {
+      setBusyId(null);
+    }
   };
+
+  const showSkeleton = loading && events.length === 0;
+  const showError = !!error && events.length === 0;
 
   return (
     <Screen
@@ -63,7 +88,14 @@ export default function FindCoffeeTalkPage() {
         />
       }
     >
-      {available.length === 0 ? (
+      {showSkeleton ? (
+        <View className="gap-3">
+          <Skeleton height={200} className="rounded-3xl" />
+          <Skeleton height={260} className="rounded-3xl" />
+        </View>
+      ) : showError ? (
+        <ErrorState title="Couldn't load coffee talks" onRetry={refresh} className="flex-1 justify-center" />
+      ) : available.length === 0 ? (
         <EmptyState
           emoji="☕"
           title="No coffee talks available"
@@ -76,7 +108,7 @@ export default function FindCoffeeTalkPage() {
           {joinedCount > 0 && (
             <Card padding="sm" className="border border-primary">
               <Text variant="label" tone="primary">
-                You've joined {joinedCount} coffee talk
+                You&apos;ve joined {joinedCount} coffee talk
                 {joinedCount === 1 ? "" : "s"}
               </Text>
             </Card>
@@ -132,23 +164,17 @@ export default function FindCoffeeTalkPage() {
                     className={joined ? "border border-primary" : undefined}
                   >
                     <View className="gap-4">
+                      {/* The café is a secret until the reveal, so the preview is always locked here. */}
                       <View className="h-32 overflow-hidden rounded-2xl">
-                        <Image
-                          source={event.cafe.photo}
-                          contentFit="cover"
-                          blurRadius={25}
-                          transition={200}
-                          accessibilityLabel="Blurred photo of the mystery café"
-                          style={{ width: "100%", height: "100%" }}
-                        />
-                        <View className="absolute inset-0 items-center justify-center bg-black/20">
+                        <CafePhoto cafe={event.cafe} hidden height={128} radius={0} iconSize={36} />
+                        <View className="absolute inset-0 items-center justify-center">
                           <View className="flex-row items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5">
                             <Icon
                               name="lock-closed"
                               size={14}
                               color="primary"
                             />
-                            <Text variant="caption">Revealed 24h before</Text>
+                            <Text variant="caption">Group and location revealed 24h before</Text>
                           </View>
                         </View>
                       </View>
@@ -162,15 +188,23 @@ export default function FindCoffeeTalkPage() {
                         <View className="items-end gap-0.5">
                           <Text variant="label">{formatTime(event.date)}</Text>
                           <Text variant="caption" tone="muted">
-                            Location locked
+                            {joined ? "You're in" : event.full ? "Event full" : "Location locked"}
                           </Text>
                         </View>
                       </View>
 
+                      {joined && (
+                        <Text variant="caption" tone="muted">
+                          You&apos;re in. Your group will be revealed on {formatDateTime(event.revealAt)}.
+                        </Text>
+                      )}
+
                       <Button
-                        title={joined ? "Cancel event" : "Join event"}
+                        title={joined ? "Leave" : event.full ? "Event full" : "Join"}
                         variant={joined ? "outline" : "primary"}
                         fullWidth
+                        disabled={!joined && event.full}
+                        loading={busyId === event.id}
                         onPress={() =>
                           joined ? handleCancel(event.id) : handleJoin(event.id)
                         }

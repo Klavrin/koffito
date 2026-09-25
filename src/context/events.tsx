@@ -1,95 +1,89 @@
+import { createContext, type PropsWithChildren, useCallback, useContext } from "react";
+
 import {
-  createContext,
-  type PropsWithChildren,
-  useContext,
-  useState,
-} from "react";
+  fetchMyEvents,
+  fetchOpenEvents,
+  joinEvent as joinEventRequest,
+  leaveEvent as leaveEventRequest,
+  rateEvent,
+  respondToEvent,
+} from "@/api";
+import { useResource } from "@/hooks/use-resource";
+import type { CoffeeEvent } from "@/types/koffito";
 
-import { events as initialEvents } from "@/data/events";
-import type { Cafe, CoffeeEvent } from "@/types/koffito";
+import { useSession } from "./session";
 
-type NewEvent = {
-  cafe: Cafe;
-  date: Date;
-  maxParticipants: number;
-  locationHidden?: boolean;
-};
+type Review = { rating: number; comment: string };
 
 type EventsContextValue = {
+  /** Every coffee talk the user can see: the ones they joined plus the open ones. */
   events: CoffeeEvent[];
+  loading: boolean;
+  error?: unknown;
+  refresh: () => Promise<void>;
   getEvent: (id?: string) => CoffeeEvent | undefined;
-  createEvent: (event: NewEvent) => CoffeeEvent;
-  joinEvent: (id: string) => void;
-  leaveEvent: (id: string) => void;
-  cancelEvent: (id: string) => void;
-  /** Opens a café whose reveal time has passed. */
-  revealEvent: (id: string) => void;
-  /** Records whether a past coffee talk happened. */
-  confirmAttendance: (id: string, happened: boolean) => void;
-  /** Stores the user's review, or their note about a coffee talk that fell through. */
-  reviewEvent: (id: string, review: { rating: number; comment: string }) => void;
+  joinEvent: (id: string) => Promise<void>;
+  leaveEvent: (id: string) => Promise<void>;
+  /** "Yes, I'm coming" / "No, I can't make it" after the reveal (also "Can't make it anymore"). */
+  respond: (id: string, coming: boolean) => Promise<void>;
+  /** Stores the user's rating and comment for a completed coffee talk. */
+  reviewEvent: (id: string, review: Review) => Promise<void>;
 };
 
 const EventsContext = createContext<EventsContextValue | null>(null);
 
-/** In-memory event store so created / cancelled coffee talks show up across screens. */
+const none: CoffeeEvent[] = [];
+
+const loadEvents = async () => {
+  const [mine, open] = await Promise.all([fetchMyEvents(), fetchOpenEvents()]);
+  // A joined open talk comes back in both lists; the "mine" row knows the user's status.
+  const seen = new Set(mine.map((event) => event.id));
+  return [...mine, ...open.filter((event) => !seen.has(event.id))];
+};
+
+/** Loads the user's coffee talks from the API; every action writes through and reloads. */
 export function EventsProvider({ children }: PropsWithChildren) {
-  const [events, setEvents] = useState<CoffeeEvent[]>(initialEvents);
+  const { session } = useSession();
+  const { data, loading, error, refresh } = useResource(loadEvents, !!session);
+
+  const events = data ?? none;
+
+  /**
+   * Runs an action against the API, then reloads so the list reflects the server's state. The
+   * server also moves statuses on its own schedule, so a rejected action reloads too.
+   */
+  const act = useCallback(
+    async (action: () => Promise<unknown>) => {
+      try {
+        await action();
+      } finally {
+        await refresh();
+      }
+    },
+    [refresh],
+  );
+
+  const joinEvent = useCallback((id: string) => act(() => joinEventRequest(id)), [act]);
+  const leaveEvent = useCallback((id: string) => act(() => leaveEventRequest(id)), [act]);
+  const respond = useCallback((id: string, coming: boolean) => act(() => respondToEvent(id, coming)), [act]);
+  const reviewEvent = useCallback(
+    (id: string, review: Review) => act(() => rateEvent(id, review.rating, review.comment || undefined)),
+    [act],
+  );
 
   return (
     <EventsContext.Provider
       value={{
         events,
+        loading,
+        error,
+        refresh,
         getEvent: (id) => events.find((event) => event.id === id),
-        createEvent: (details) => {
-          const event: CoffeeEvent = {
-            id: `e${Date.now()}`,
-            participants: [],
-            status: "confirmed",
-            joined: true,
-            ...details,
-          };
-          setEvents((current) => [event, ...current]);
-          return event;
-        },
-        joinEvent: (id) =>
-          setEvents((current) =>
-            current.map((event) =>
-              event.id === id ? { ...event, joined: true } : event,
-            ),
-          ),
-        leaveEvent: (id) =>
-          setEvents((current) =>
-            current.map((event) =>
-              event.id === id ? { ...event, joined: false } : event,
-            ),
-          ),
-        cancelEvent: (id) =>
-          setEvents((current) =>
-            current.map((event) =>
-              event.id === id ? { ...event, status: "cancelled" } : event,
-            ),
-          ),
-        revealEvent: (id) =>
-          setEvents((current) =>
-            current.map((event) =>
-              event.id === id ? { ...event, revealOpened: true } : event,
-            ),
-          ),
-        confirmAttendance: (id, happened) =>
-          setEvents((current) =>
-            current.map((event) =>
-              event.id === id
-                ? { ...event, attendance: happened ? "happened" : "missed" }
-                : event,
-            ),
-          ),
-        reviewEvent: (id, review) =>
-          setEvents((current) =>
-            current.map((event) => (event.id === id ? { ...event, review } : event)),
-          ),
-      }}
-    >
+        joinEvent,
+        leaveEvent,
+        respond,
+        reviewEvent,
+      }}>
       {children}
     </EventsContext.Provider>
   );

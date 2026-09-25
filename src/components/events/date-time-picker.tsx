@@ -19,13 +19,15 @@ export function combineDateTime(day: Date, time: string) {
 export type DayPickerProps = {
   value?: Date;
   onChange: (day: Date) => void;
+  /** How many days to offer, starting tomorrow. */
+  days?: number;
 };
 
 /** Horizontal strip of the next two weeks. */
-export function DayPicker({ value, onChange }: DayPickerProps) {
+export function DayPicker({ value, onChange, days: count = DAYS_AHEAD }: DayPickerProps) {
   const today = new Date();
   const days = Array.from(
-    { length: DAYS_AHEAD },
+    { length: count },
     (_, index) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + index + 1),
   );
 
@@ -61,12 +63,21 @@ export function DayPicker({ value, onChange }: DayPickerProps) {
 export type TimePickerProps = {
   value?: string;
   onChange: (time: string) => void;
+  /** "HH:mm" options; defaults to `timeSlots`. */
+  slots?: string[];
 };
 
-export function TimePicker({ value, onChange }: TimePickerProps) {
+/** Every half hour between two hours, e.g. halfHourSlots(8, 21) → "08:00" … "21:00". */
+export const halfHourSlots = (from: number, to: number) =>
+  Array.from({ length: (to - from) * 2 + 1 }, (_, index) => {
+    const minutes = from * 60 + index * 30;
+    return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${minutes % 60 === 0 ? "00" : "30"}`;
+  });
+
+export function TimePicker({ value, onChange, slots = timeSlots }: TimePickerProps) {
   return (
     <View className="flex-row flex-wrap gap-2">
-      {timeSlots.map((slot) => (
+      {slots.map((slot) => (
         <Chip key={slot} label={slot} size="sm" selected={slot === value} onPress={() => onChange(slot)} />
       ))}
     </View>

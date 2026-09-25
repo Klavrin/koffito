@@ -6,16 +6,37 @@ import {
   SettingsRow,
   SettingsSection,
 } from "@/components/settings/settings-section";
-import { Header, Modal, Text } from "@/components/ui";
+import { Header, Modal, Text, useToast } from "@/components/ui";
 import { useSession } from "@/context/session";
+import { describeError } from "@/lib/errors";
 import { goBack } from "@/lib/navigation";
+import type { Settings } from "@/types/koffito";
 
 export default function SettingsPage() {
-  const { signOut } = useSession();
+  const { profile, settings, updateSettings, signOut } = useSession();
+  const toast = useToast();
 
-  const [notifications, setNotifications] = useState(true);
-  const [reminders, setReminders] = useState(true);
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  // The switch flips right away; the session rolls it back if the save fails.
+  const toggle = (key: keyof Settings) => async (value: boolean) => {
+    try {
+      await updateSettings({ [key]: value });
+    } catch (error) {
+      toast.show({ title: "Couldn't save that", message: describeError(error), variant: "error" });
+    }
+  };
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    const { error } = await signOut();
+    if (error) {
+      setSigningOut(false);
+      setSignOutOpen(false);
+      toast.show({ title: "Couldn't log you out", message: describeError(error), variant: "error" });
+    }
+  };
 
   return (
     <Screen header={<Header title="Settings" onBack={goBack} />}>
@@ -41,13 +62,13 @@ export default function SettingsPage() {
           icon="notifications-outline"
           label="Notifications"
           description="Opportunities, event updates and more"
-          toggle={{ value: notifications, onChange: setNotifications }}
+          toggle={{ value: settings.notifications, onChange: toggle("notifications") }}
         />
         <SettingsRow
           icon="alarm-outline"
           label="Coffee talk reminders"
           description="A nudge before each meetup"
-          toggle={{ value: reminders, onChange: setReminders }}
+          toggle={{ value: settings.reminders, onChange: toggle("reminders") }}
         />
       </SettingsSection>
 
@@ -57,6 +78,14 @@ export default function SettingsPage() {
           label="Report a problem"
           onPress={() => router.push("/report")}
         />
+        {profile.isAdmin && (
+          <SettingsRow
+            icon="shield-checkmark-outline"
+            label="Admin"
+            description="Coffee talks, cafés and reports"
+            onPress={() => router.push("/admin")}
+          />
+        )}
       </SettingsSection>
 
       <SettingsSection title="Session">
@@ -69,7 +98,7 @@ export default function SettingsPage() {
       </SettingsSection>
 
       <Text variant="caption" tone="muted" className="text-center">
-        Koffito · made with ☕
+        {profile.email ? `Logged in as ${profile.email}` : "Koffito · made with ☕"}
       </Text>
 
       <Modal
@@ -81,7 +110,8 @@ export default function SettingsPage() {
         primaryAction={{
           title: "Log out",
           variant: "destructive",
-          onPress: signOut,
+          loading: signingOut,
+          onPress: handleSignOut,
         }}
         secondaryAction={{
           title: "Stay",

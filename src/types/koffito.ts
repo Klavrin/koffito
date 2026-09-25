@@ -1,6 +1,9 @@
 import type { ImageSource } from "expo-image";
 
 import type { Interest } from "@/constants/interests";
+import type { CancelReason, EventStatus, ParticipantStatus } from "@/types/api";
+
+export type { CancelReason, EventStatus, ParticipantStatus };
 
 export type { Interest };
 
@@ -46,39 +49,62 @@ export type Cafe = {
   id: string;
   name: string;
   description: string;
-  photo: string;
+  /** Venues can be listed before they have a picture. */
+  photo: string | null;
   address: string;
   website?: string;
   phone?: string;
+  mapsUrl?: string;
   rating: number;
   /** Relative busyness (0-100) for each slot in `popularTimeLabels`. */
   popularTimes: number[];
 };
 
+/** Someone in the user's group, as a confirmed member sees them. */
+export type GroupMember = {
+  id: string;
+  /** First name only. */
+  name: string;
+  emoji?: string;
+  status: ParticipantStatus;
+  /** Survey answers both people picked, as "question:answer" keys (e.g. "hobbies:hiking"). */
+  sharedInterests: string[];
+};
+
+/**
+ * A coffee talk as the app sees it. Everything time-based comes from the server: the admin
+ * only picks `date`, the rest is derived (close T − 24h5m, reveal T − 24h, completed T + 2h)
+ * and the statuses are moved by the server's scheduler.
+ */
 export type CoffeeEvent = {
   id: string;
-  cafe: Cafe;
   date: Date;
-  participants: User[];
-  maxParticipants: number;
-  status: MeetupStatusType;
-  /** Whether the signed-in user is part of this coffee talk. */
+  registrationClosesAt: Date;
+  revealAt: Date;
+  completesAt: Date;
+  status: EventStatus;
+  /** Whether the signed-in user joined this coffee talk. */
   joined: boolean;
-  /** Blind coffee talks keep the café secret until shortly before the meetup. */
-  locationHidden?: boolean;
-  /** Set once the user taps to open a café whose reveal time has passed. */
-  revealOpened?: boolean;
-  /** Set once the user confirms whether a past coffee talk actually happened. */
-  attendance?: "happened" | "missed";
-  /** The user's own review; only for coffee talks that happened. */
+  /** The user's own state, for talks they joined. */
+  participantStatus?: ParticipantStatus;
+  cancelReason?: CancelReason;
+  /** Open talks only: capacity (active cafés × 5) is reached. */
+  full?: boolean;
+  /** Only once revealed and the user said "Yes, I'm coming". */
+  groupNumber?: number;
+  cafe?: Cafe;
+  members: GroupMember[];
+  /** The user's own rating, after the coffee talk. */
   review?: { rating: number; comment: string };
 };
 
 export type ReportStatus = "open" | "reviewing" | "resolved";
 
+export type ReportReason = "no-show" | "rude" | "unsafe" | "fake" | "other";
+
 export type Report = {
   id: string;
-  reason: string;
+  reason: ReportReason;
   details: string;
   reportedBy: string;
   date: Date;
@@ -88,6 +114,8 @@ export type Report = {
 export type SurveyAnswers = Record<string, string[]>;
 
 export type Profile = {
+  /** Auth user id; missing only for the placeholder built before the profile row is loaded. */
+  id?: string;
   firstName: string;
   lastName?: string;
   email?: string;
@@ -99,4 +127,23 @@ export type Profile = {
   favoriteCoffee?: string;
   survey: SurveyAnswers;
   onboarded: boolean;
+  isAdmin?: boolean;
+};
+
+export type ProfileStats = {
+  coffeeTalks: number;
+  cafesVisited: number;
+  peopleMet: number;
+};
+
+export type Settings = {
+  notifications: boolean;
+  reminders: boolean;
+};
+
+/** Everything `GET /me` says about the signed-in user. */
+export type Me = {
+  profile: Profile;
+  stats: ProfileStats;
+  settings: Settings;
 };

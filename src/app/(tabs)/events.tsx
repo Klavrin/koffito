@@ -3,12 +3,13 @@ import { useState } from "react";
 import { View } from "react-native";
 
 import { EventCard } from "@/components/events/event-card";
-import { MissedFeedbackSheet } from "@/components/events/missed-feedback-sheet";
 import { RateExperienceSheet } from "@/components/events/rate-experience-sheet";
 import { Screen } from "@/components/layout";
-import { Chip, EmptyState, Header, useToast } from "@/components/ui";
+import { Chip, EmptyState, ErrorState, Header, IconButton, Skeleton, useToast } from "@/components/ui";
 import { useEvents } from "@/context/events";
-import { isUpcoming } from "@/data/events";
+import { useSession } from "@/context/session";
+import { describeError } from "@/lib/errors";
+import { isUpcoming } from "@/lib/events";
 
 type Filter = "upcoming" | "past";
 
@@ -18,41 +19,36 @@ const filters: { key: Filter; label: string }[] = [
 ];
 
 export default function EventsPage() {
-  const { events, confirmAttendance, reviewEvent } = useEvents();
+  const { profile } = useSession();
+  const { events, loading, error, refresh, reviewEvent } = useEvents();
   const toast = useToast();
   const [filter, setFilter] = useState<Filter>("upcoming");
-  // Which past coffee talk is being reviewed, and in which sheet.
-  const [reviewing, setReviewing] = useState<string | null>(null);
-  const [missed, setMissed] = useState<string | null>(null);
+  // The completed coffee talk being rated.
+  const [rating, setRating] = useState<string | null>(null);
 
-  const openReport = (id: string | null) => {
-    setReviewing(null);
-    setMissed(null);
-    router.push({ pathname: "/report", params: id ? { eventId: id } : {} });
-  };
+  const openDetails = (id: string, ask?: boolean) =>
+    router.push({ pathname: "/event-details", params: ask ? { id, ask: "1" } : { id } });
 
-  const handleConfirm = (id: string, happened: boolean) => {
-    confirmAttendance(id, happened);
-    if (happened) setReviewing(id);
-    else setMissed(id);
-  };
+  const handleRate = async (value: number, comment: string) => {
+    const id = rating;
+    setRating(null);
+    if (!id) return;
 
-  const handleReview = (rating: number, comment: string) => {
-    if (reviewing) reviewEvent(reviewing, { rating, comment });
-    setReviewing(null);
-    toast.show({ title: "Thanks for the review!", variant: "success" });
-  };
-
-  const handleMissed = (comment: string) => {
-    if (missed) reviewEvent(missed, { rating: 0, comment });
-    setMissed(null);
-    toast.show({ title: "Thanks for letting us know", variant: "info" });
+    try {
+      await reviewEvent(id, { rating: value, comment });
+      toast.show({ title: "Thanks for the review!", variant: "success" });
+    } catch (rateError) {
+      toast.show({ title: "Couldn't save your review", message: describeError(rateError), variant: "error" });
+    }
   };
 
   const mine = events.filter((event) => event.joined);
   const visible = mine
     .filter((event) => (filter === "upcoming" ? isUpcoming(event) : !isUpcoming(event)))
     .sort((a, b) => (filter === "upcoming" ? a.date.getTime() - b.date.getTime() : b.date.getTime() - a.date.getTime()));
+
+  const showSkeleton = loading && events.length === 0;
+  const showError = !!error && events.length === 0;
 
   return (
     <Screen
@@ -62,6 +58,16 @@ export default function EventsPage() {
           size="large"
           title="Events"
           subtitle="Your coffee talks, all in one place"
+          right={
+            profile.isAdmin ? (
+              <IconButton
+                icon="add"
+                variant="primary"
+                accessibilityLabel="Manage coffee talks"
+                onPress={() => router.push("/admin/events")}
+              />
+            ) : undefined
+          }
         />
       }
       contentClassName="gap-4">
@@ -71,41 +77,43 @@ export default function EventsPage() {
         ))}
       </View>
 
-      {visible.length === 0 ? (
+      {showSkeleton ? (
+        <>
+          <Skeleton height={164} className="rounded-3xl" />
+          <Skeleton height={164} className="rounded-3xl" />
+        </>
+      ) : showError ? (
+        <ErrorState title="Couldn't load your coffee talks" onRetry={refresh} className="flex-1 justify-center" />
+      ) : visible.length === 0 ? (
         <EmptyState
-          emoji=""
-          title={filter === "upcoming" ? "No coffee talks planned" : "No past coffee talks yet"}
+          emoji="☕"
+          title={filter === "upcoming" ? "No coffee buddies yet" : "No past coffee talks yet"}
           description={filter === "upcoming" ? "There's always someone new to meet." : "Your coffee stories will show up here."}
           action={{ title: "Find coffee talk", leftIcon: "search", onPress: () => router.push("/find-coffee-talk") }}
           className="flex-1 justify-center"
         />
       ) : (
-        <>
-          {visible.map((event, index) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              animateIn={index}
-              onPress={() => router.push({ pathname: "/event-details", params: { id: event.id } })}
-              onConfirm={(happened) => handleConfirm(event.id, happened)}
-              onReview={() => setReviewing(event.id)}
-            />
-          ))}
-        </>
+        visible.map((event, index) => (
+          <EventCard
+            key={event.id}
+            event={event}
+            animateIn={index}
+            onPress={() => openDetails(event.id)}
+            onReveal={() => openDetails(event.id, true)}
+            onRate={() => setRating(event.id)}
+          />
+        ))
       )}
 
       <RateExperienceSheet
-        visible={!!reviewing}
-        onClose={() => setReviewing(null)}
-        onSubmit={handleReview}
-        onReport={() => openReport(reviewing)}
-      />
-
-      <MissedFeedbackSheet
-        visible={!!missed}
-        onClose={() => setMissed(null)}
-        onSubmit={handleMissed}
-        onReport={() => openReport(missed)}
+        visible={!!rating}
+        onClose={() => setRating(null)}
+        onSubmit={handleRate}
+        onReport={() => {
+          const id = rating;
+          setRating(null);
+          if (id) openDetails(id);
+        }}
       />
     </Screen>
   );

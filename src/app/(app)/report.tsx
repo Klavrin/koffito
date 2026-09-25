@@ -1,17 +1,22 @@
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 
+import { sendReport } from "@/api";
 import { Screen, Section } from "@/components/layout";
 import { OptionList } from "@/components/survey/option-list";
 import { Button, Card, Header, Input, Text, useToast } from "@/components/ui";
 import { useEvents } from "@/context/events";
 import { reportReasons } from "@/data/reports";
+import { describeError } from "@/lib/errors";
 import { goBack } from "@/lib/navigation";
+import type { ReportReason } from "@/types/koffito";
 
 const MIN_DETAILS = 10;
 
 export default function ReportPage() {
-  const { eventId } = useLocalSearchParams<{ eventId?: string }>();
+  // `userId` + `name` report a groupmate after a completed coffee talk; without them it's
+  // a report about the coffee talk itself.
+  const { eventId, userId, name } = useLocalSearchParams<{ eventId?: string; userId?: string; name?: string }>();
   const { getEvent } = useEvents();
   const toast = useToast();
 
@@ -26,28 +31,36 @@ export default function ReportPage() {
       ? undefined
       : "A sentence or two helps us understand what happened";
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setSubmitted(true);
     if (reason.length === 0 || detailsError) return;
 
     setSending(true);
-    // Stand-in for the real request.
-    setTimeout(() => {
+    try {
+      await sendReport({
+        reason: reason[0] as ReportReason,
+        details,
+        eventId: event?.id ?? eventId,
+        reportedUserId: userId,
+      });
       toast.show({
         title: "Report sent",
         message: "Thank you - our team will take a look.",
         variant: "success",
       });
       goBack();
-    }, 600);
+    } catch (error) {
+      toast.show({ title: "Couldn't send the report", message: describeError(error), variant: "error" });
+      setSending(false);
+    }
   };
 
   return (
     <Screen
       header={
         <Header
-          title="Report"
-          subtitle={event ? `Coffee talk at ${event.cafe.name}` : undefined}
+          title={name ? `Report ${name}` : "Report"}
+          subtitle={event ? `Coffee talk at ${event.cafe?.name ?? "a mystery café"}` : undefined}
           onBack={goBack}
         />
       }

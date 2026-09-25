@@ -48,7 +48,6 @@ const groups: {
     guard: "returning",
     links: [
       { label: "find-coffee-talk", href: "/find-coffee-talk" },
-      { label: "create-event", href: "/create-event" },
       {
         label: "event-details",
         href: { pathname: "/event-details", params: { id: "e1" } },
@@ -60,7 +59,11 @@ const groups: {
       { label: "person", href: { pathname: "/person", params: { id: "u1" } } },
       { label: "settings", href: "/settings" },
       { label: "survey-profile-settings", href: "/survey-profile-settings" },
-      { label: "admin — reports", href: "/admin" },
+      { label: "admin", href: "/admin" },
+      { label: "admin — coffee talks", href: "/admin/events" },
+      { label: "admin — coffee talk", href: { pathname: "/admin/event", params: { id: "e1" } } },
+      { label: "admin — cafés", href: "/admin/cafes" },
+      { label: "admin — reports", href: "/admin/reports" },
       { label: "components", href: "/components" },
     ],
   },

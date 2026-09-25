@@ -9,6 +9,7 @@ import { Screen } from "@/components/layout";
 import { Button, Header, Input } from "@/components/ui";
 import { useToast } from "@/components/ui/toast";
 import { useSession } from "@/context/session";
+import { describeError } from "@/lib/errors";
 import { isValid, validateEmail, validateRequired } from "@/lib/validation";
 
 export default function LoginPage() {
@@ -36,7 +37,7 @@ export default function LoginPage() {
       if (error) {
         toast.show({
           title: "Could not log in",
-          message: error.message,
+          message: describeError(error),
           variant: "error",
         });
       }
