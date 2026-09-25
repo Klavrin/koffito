@@ -2,7 +2,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import { View } from "react-native";
 
-import { cancelAdminEvent, fetchAdminEvent } from "@/api";
+import { cancelAdminEvent, fetchAdminEvent, revealAdminEventNow } from "@/api";
 import { AdminOnly } from "@/components/admin/admin-only";
 import { EventStatusBadge } from "@/components/admin/event-status-badge";
 import { GroupMemberRow } from "@/components/events/group-member-row";
@@ -24,6 +24,8 @@ import type { AdminEventDetail, AdminGroup } from "@/types/api";
 /** Matchmaking normally finishes on the first tick after closing; longer than this is worth a look. */
 const CLOSED_TOO_LONG_MS = 3 * 60 * 1000;
 const CANCELLABLE = new Set(["open", "closed", "matched", "revealed"]);
+/** "Reveal now" is a testing shortcut; the API only allows it outside production. */
+const REVEALABLE = new Set(["open", "closed", "matched"]);
 
 export default function AdminEventPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -36,6 +38,8 @@ export default function AdminEventPage() {
   const [now, setNow] = useState(() => Date.now());
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [revealOpen, setRevealOpen] = useState(false);
+  const [revealing, setRevealing] = useState(false);
 
   // A live countdown, and a fresh look at the server every 30 seconds.
   useInterval(() => setNow(Date.now()), 1000, isAdmin);
@@ -54,6 +58,19 @@ export default function AdminEventPage() {
     }
   };
 
+  const handleRevealNow = async () => {
+    setRevealing(true);
+    try {
+      setData(await revealAdminEventNow(id));
+      toast.show({ title: "Revealed", message: "Participants can now say whether they're coming.", variant: "success" });
+    } catch (revealError) {
+      toast.show({ title: "Couldn't reveal", message: describeError(revealError), variant: "error" });
+    } finally {
+      setRevealing(false);
+      setRevealOpen(false);
+    }
+  };
+
   const detail = data;
   const event = detail?.event;
 
@@ -69,7 +86,19 @@ export default function AdminEventPage() {
         }
         footer={
           event && CANCELLABLE.has(event.status) ? (
-            <Button title="Cancel event" variant="destructive" size="lg" fullWidth onPress={() => setCancelOpen(true)} />
+            <View className="gap-2">
+              {__DEV__ && REVEALABLE.has(event.status) && (
+                <Button
+                  title="Reveal now (testing)"
+                  variant="secondary"
+                  size="lg"
+                  fullWidth
+                  leftIcon="flash-outline"
+                  onPress={() => setRevealOpen(true)}
+                />
+              )}
+              <Button title="Cancel event" variant="destructive" size="lg" fullWidth onPress={() => setCancelOpen(true)} />
+            </View>
           ) : undefined
         }
         contentClassName="gap-5">
@@ -136,6 +165,15 @@ export default function AdminEventPage() {
             )}
           </>
         )}
+
+        <Modal
+          visible={revealOpen}
+          onClose={() => setRevealOpen(false)}
+          title="Reveal this coffee talk now?"
+          description="For testing: registration closes, groups and cafés are assigned, and everyone can answer right away. The event still happens at its original time."
+          primaryAction={{ title: "Reveal now", loading: revealing, onPress: handleRevealNow }}
+          secondaryAction={{ title: "Not yet", onPress: () => setRevealOpen(false) }}
+        />
 
         <Modal
           visible={cancelOpen}

@@ -615,6 +615,16 @@ select * from cron.job;          -- koffito-tick, * * * * *, active
 select * from cron.job_run_details order by start_time desc limit 10;
 ```
 
+**Or skip straight to the reveal (testing only).** On an admin event page, **Reveal now
+(testing)** closes registration, runs matchmaking and reveals the event at once. It needs 3 or
+more participants and is only shown in development builds; the API refuses it in production
+(`404`). The event still starts and completes at its original times.
+
+```bash
+curl -sS -X POST "$API/admin/events/$EID/reveal" -H "authorization: Bearer $ADMIN"
+# 409 not_enough_people | not_enough_cafes | event_not_revealable | matching_failed
+```
+
 ### 8.4 Run the whole flow
 
 The script creates an admin and four users, runs every step with time travel, checks about sixty

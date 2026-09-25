@@ -42,6 +42,14 @@ export function cancelAdminEvent(eventId: string) {
   return api.post<AdminEventDetail>(`/admin/events/${eventId}/cancel`);
 }
 
+/**
+ * Admins only, for testing: closes registration, runs matchmaking and reveals right away
+ * instead of waiting for the schedule. The API refuses it in production.
+ */
+export function revealAdminEventNow(eventId: string) {
+  return api.post<AdminEventDetail>(`/admin/events/${eventId}/reveal`);
+}
+
 /** Admins only: every café, including deactivated ones, by name. */
 export async function fetchAdminVenues(): Promise<AdminVenue[]> {
   const rows = await api.get<AdminVenue[]>("/admin/venues?include_inactive=true");

@@ -37,6 +37,10 @@ const apiMessages: Record<string, string> = {
   event_not_completed: "You can rate this coffee talk once it's over.",
   not_attended: "You can only rate coffee talks you went to.",
   event_not_cancellable: "This coffee talk is already over.",
+  event_not_revealable: "This coffee talk is already revealed or over.",
+  not_enough_people: "At least 3 people need to join first.",
+  not_enough_cafes: "There aren't enough active cafés for these groups.",
+  matching_failed: "Matchmaking didn't go through. Try again in a minute.",
   // 422
   validation_error: "Some of that didn't look right. Check the form.",
   empty_update: "Nothing changed.",
